@@ -38,7 +38,20 @@
       "Bash(python3 -c \"import sys; sys.path.insert\\(0,'src'\\); from voicebot.config import settings; print\\('max_tokens =', settings.max_tokens\\)\")",
       "Bash(python3 -m ruff check src/voicebot/config.py src/voicebot/prompts.py)",
       "Bash(python3 -m ruff check --select E501 -)",
-      "Bash(python3 -m ruff check --select E501 src/voicebot/prompts.py)"
+      "Bash(python3 -m ruff check --select E501 src/voicebot/prompts.py)",
+      "WebFetch(domain:github.com)",
+      "Bash(grep -rniE \"piper|lessac\" . --exclude-dir=.git --exclude-dir=__pycache__ --exclude-dir=.ruff_cache --exclude-dir=.pytest_cache)",
+      "Bash(echo \"=== exit grep: $? \\(1 = nessun residuo\\) ===\")",
+      "Bash(python -c \"from voicebot.config import settings; print\\('voice=', settings.kokoro_voice, '| model=', settings.kokoro_model_path.name, '| voices=', settings.kokoro_voices_path.name, '| speed=', settings.kokoro_speed, '| lang=', settings.kokoro_lang\\)\")",
+      "Bash(PYTHONPATH=src python -c \"from voicebot.config import settings; print\\('voice=', settings.kokoro_voice, '| model=', settings.kokoro_model_path.name, '| voices=', settings.kokoro_voices_path.name, '| speed=', settings.kokoro_speed, '| lang=', settings.kokoro_lang\\)\")",
+      "Bash(PYTHONPATH=src python -m pytest -q)",
+      "Bash(PYTHONPATH=src python -c \"from voicebot.tts import Speaker; s=Speaker\\(\\); print\\('Speaker import OK; default sample_rate fallback =', s._sample_rate or 24000\\); print\\('empty text ->', repr\\(s.synthesize\\('   '\\)\\)\\)\")",
+      "Bash(docker version *)",
+      "Bash(curl -sIL -o /dev/null -w \"onnx:   %{http_code}  size:%{size_download}\\\\n\" \"https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx\")",
+      "Bash(curl -sIL -o /dev/null -w \"voices: %{http_code}\\\\n\" \"https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin\")",
+      "Bash(timeout 90 make say TEXT=\"hi, my night bus just got cancelled in rural Vietnam and it's 2am — what do I do?\")",
+      "Bash(make say *)",
+      "Bash(open reply-kokoro.wav)"
     ],
     "additionalDirectories": [
       "/Volumes/ARCHIVE/SUPSI/07. Subject/12. Designing Intelligent Experiences/wayra_test/src/wayra"

@@ -21,7 +21,7 @@ The system splits into an **audio frontend** and a **brain**:
 │  Arduino Uno Q (Linux)   │  ws://host:8765         │  OrbStack container ("brain") │
 │  • wake word             │ ──── PCM audio ───────▶ │  • STT   faster-whisper       │
 │  • microphone            │                         │  • LLM   Ollama (on host)     │
-│  • speaker               │ ◀─── PCM audio ──────── │  • TTS   Piper                │
+│  • speaker               │ ◀─── PCM audio ──────── │  • TTS   Kokoro               │
 └──────────────────────────┘    + JSON events        └───────────────────────────────┘
 ```
 
@@ -32,8 +32,8 @@ The system splits into an **audio frontend** and a **brain**:
   and synthesises speech — streaming the reply back **sentence by sentence** so
   playback starts while the model is still generating.
 - **Ollama** runs on the host Mac; the container reaches it through
-  `host.docker.internal`. The Piper voice and the Whisper model are baked into
-  the image, so the container itself needs no network at runtime.
+  `host.docker.internal`. The Kokoro voice model and the Whisper model are baked
+  into the image, so the container itself needs no network at runtime.
 
 Everything that runs on the Mac runs inside OrbStack. The only host-side
 dependency is Ollama (which serves the model and is reached over the local
@@ -47,7 +47,7 @@ network bridge).
 |-------|--------|-------|
 | Speech-to-text | [faster-whisper](https://github.com/SYSTRAN/faster-whisper) | `base.en`, int8, CPU |
 | Language model | [Ollama](https://ollama.com) `gemma3n:e4b` | on the host, local-only, no fallback |
-| Text-to-speech | [Piper](https://github.com/rhasspy/piper) | `en_US-lessac-medium`, offline |
+| Text-to-speech | [Kokoro](https://github.com/thewh1teagle/kokoro-onnx) | `kokoro-v1.0`, voice `af_heart`, 24 kHz, offline on CPU |
 | Transport | WebSocket (`websockets`) | binary PCM + JSON control frames |
 
 ---
@@ -79,8 +79,8 @@ make shell        # shell inside the container
 make health       # check the websocket port is open
 ```
 
-The first build downloads the Piper voice and the Whisper model and bakes them
-into the image, so it takes a few minutes. After that the brain listens on
+The first build downloads the Kokoro voice model and the Whisper model and bakes
+them into the image, so it takes a few minutes. After that the brain listens on
 `ws://127.0.0.1:8765`.
 
 > The `make` targets scrub macOS `._*` AppleDouble files before each Docker
@@ -220,7 +220,8 @@ The defaults assume OrbStack + host Ollama and need no changes.
 | `OLLAMA_URL` | `http://host.docker.internal:11434` | host Ollama endpoint |
 | `VOICEBOT_LOCAL_MODEL` | `gemma3n:e4b` | Ollama model |
 | `VOICEBOT_WHISPER_MODEL` | `base.en` | STT model (must match the image build arg) |
-| `VOICEBOT_PIPER_MODEL` | `/app/models/en_US-lessac-medium.onnx` | TTS voice |
+| `VOICEBOT_KOKORO_VOICE` | `af_heart` | Kokoro voice id (see VOICES.md) |
+| `VOICEBOT_KOKORO_SPEED` | `1.0` | speaking-rate multiplier |
 | `VOICEBOT_WS_PORT` | `8765` | WebSocket port |
 | `VOICEBOT_MAX_TOKENS` | `220` | reply length cap (kept short for spoken replies) |
 | `VOICEBOT_LOG_JSON` | `false` | structured JSON logs |
@@ -243,7 +244,7 @@ Run the brain outside Docker (Linux, or the Arduino's Linux side):
 
 ```bash
 pip install -e .
-bash scripts/download_models.sh        # fetch the Piper voice into models/
+bash scripts/download_models.sh        # fetch the Kokoro model + voices into models/
 voicebot                            # listens on ws://0.0.0.0:8765
 ```
 

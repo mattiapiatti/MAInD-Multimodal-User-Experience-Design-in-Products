@@ -5,11 +5,11 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "voicebot"
 version = "0.1.0"
-description = "Voice assistant — fully-local, voice-only travel-companion AI (faster-whisper + Ollama + Piper)"
+description = "Voice assistant — fully-local, voice-only travel-companion AI (faster-whisper + Ollama + Kokoro)"
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [{ name = "Mattia Piatti" }]
-keywords = ["ai", "travel", "voice", "ollama", "whisper", "piper", "offline"]
+keywords = ["ai", "travel", "voice", "ollama", "whisper", "kokoro", "offline"]
 classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
@@ -22,7 +22,7 @@ dependencies = [
     "pydantic>=2.9",
     "pydantic-settings>=2.6",
     "faster-whisper>=1.0",
-    "piper-tts>=1.2",
+    "kokoro-onnx>=0.4",
     "websockets>=13.0",
     "numpy>=1.26",
 ]
