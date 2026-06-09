@@ -33,7 +33,12 @@
       "Bash(git push *)",
       "Bash(python3 -m ruff check src tests)",
       "Bash(python3 -m ruff check src/voicebot/memory tests/test_memory.py)",
-      "Bash(python3 -m ruff check --fix src/voicebot/memory tests/test_memory.py)"
+      "Bash(python3 -m ruff check --fix src/voicebot/memory tests/test_memory.py)",
+      "Bash(git commit -q -m 'Add adaptive Hebbian memory on an Obsidian-style note vault *)",
+      "Bash(python3 -c \"import sys; sys.path.insert\\(0,'src'\\); from voicebot.config import settings; print\\('max_tokens =', settings.max_tokens\\)\")",
+      "Bash(python3 -m ruff check src/voicebot/config.py src/voicebot/prompts.py)",
+      "Bash(python3 -m ruff check --select E501 -)",
+      "Bash(python3 -m ruff check --select E501 src/voicebot/prompts.py)"
     ],
     "additionalDirectories": [
       "/Volumes/ARCHIVE/SUPSI/07. Subject/12. Designing Intelligent Experiences/wayra_test/src/wayra"

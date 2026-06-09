@@ -222,7 +222,7 @@ The defaults assume OrbStack + host Ollama and need no changes.
 | `VOICEBOT_WHISPER_MODEL` | `base.en` | STT model (must match the image build arg) |
 | `VOICEBOT_PIPER_MODEL` | `/app/models/en_US-lessac-medium.onnx` | TTS voice |
 | `VOICEBOT_WS_PORT` | `8765` | WebSocket port |
-| `VOICEBOT_MAX_TOKENS` | `512` | reply length cap |
+| `VOICEBOT_MAX_TOKENS` | `220` | reply length cap (kept short for spoken replies) |
 | `VOICEBOT_LOG_JSON` | `false` | structured JSON logs |
 | `VOICEBOT_MEMORY_ENABLED` | `true` | enable the adaptive Hebbian memory |
 | `VOICEBOT_MEMORY_VAULT_PATH` | `/app/memory/vault` | note vault location (bind-mounted) |
