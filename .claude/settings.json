@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cp \"/Volumes/ARCHIVE/SUPSI/07. Subject/12. Designing Intelligent Experiences/wayra_test/src/wayra/system_prompt.txt\" \"/Volumes/ARCHIVE/SUPSI/07. Subject/13. Multimodal User Experience Design in Products/code/src/wayra/system_prompt.txt\")",
+      "Bash(python3 -m py_compile src/wayra/*.py scripts/ws_test_client.py tests/*.py)",
+      "Bash(bash -n scripts/download_models.sh)",
+      "Bash(PYTHONPATH=src python3 -m pytest tests/test_text.py -q)",
+      "Bash(PYTHONPATH=src python3 -m pytest -q)",
+      "Bash(chmod +x scripts/download_models.sh scripts/ws_test_client.py)",
+      "Bash(sed -i '' -e 's/Wayra Voice/Voice assistant/g' pyproject.toml README.md Makefile Dockerfile src/voicebot/__init__.py src/voicebot/config.py src/voicebot/server.py scripts/ws_test_client.py)",
+      "Bash(sed -i '' -e 's/version of the Wayra travel-companion AI/version of a local, no-name travel-companion AI/' -e 's/Designing Intelligent Experiences\\\\* Wayra service/Designing Intelligent Experiences* travel-companion service/' README.md)",
+      "Bash(python3 -m py_compile src/voicebot/*.py scripts/ws_test_client.py tests/*.py)",
+      "Bash(make start *)",
+      "Bash(docker compose *)",
+      "Bash(python3 -m py_compile src/voicebot/*.py)",
+      "Bash(python3 -m py_compile scripts/mic_switcher.py)",
+      "Bash(python3 -c \"import sounddevice\")",
+      "Bash(python3 -c \"import sounddevice; print\\('OK', sounddevice.__version__\\)\")",
+      "Bash(echo \"exit=$?\")",
+      "Bash(make switcher-install *)",
+      "Bash(rm -rf .venv-client)",
+      "Bash(python3 -m venv .venv-client)",
+      "Bash(.venv-client/bin/python -m pip install --upgrade pip)",
+      "Bash(rm -rf /Users/mattiapiatti/.voicebot-client-venv)",
+      "Bash(make switcher-devices *)",
+      "Bash(/Users/mattiapiatti/.voicebot-client-venv/bin/python scripts/mic_switcher.py)",
+      "Bash(python3 -m py_compile scripts/mic_switcher.py src/voicebot/server.py)",
+      "Bash(git config *)",
+      "Bash(git ls-remote *)"
+    ],
+    "additionalDirectories": [
+      "/Volumes/ARCHIVE/SUPSI/07. Subject/12. Designing Intelligent Experiences/wayra_test/src/wayra"
+    ]
+  }
+}

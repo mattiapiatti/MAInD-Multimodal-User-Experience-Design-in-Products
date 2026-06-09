@@ -1,0 +1,21 @@
+# macOS AppleDouble files (BuildKit reads their xattrs and aborts on ARCHIVE volumes)
+._*
+**/._*
+.DS_Store
+
+# VCS / Python caches
+.git
+.gitignore
+__pycache__/
+**/__pycache__/
+*.pyc
+.ruff_cache/
+.pytest_cache/
+*.egg-info/
+
+# local secrets and downloaded artifacts (models are baked in during build)
+.env
+.venv-client/
+models/
+reply.wav
+*.wav

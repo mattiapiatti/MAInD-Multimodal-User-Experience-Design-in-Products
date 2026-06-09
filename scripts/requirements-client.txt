@@ -1,0 +1,7 @@
+# Host-side dependencies for the terminal switcher (scripts/mic_switcher.py).
+# This is the only part that runs on the Mac outside OrbStack, because the
+# container cannot reach the Mac microphone. Install with:
+#   pip install -r scripts/requirements-client.txt
+sounddevice>=0.4
+numpy>=1.26
+websockets>=13.0
