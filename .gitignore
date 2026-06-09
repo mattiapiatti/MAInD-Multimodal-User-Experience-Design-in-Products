@@ -9,3 +9,6 @@ __pycache__/
 *.egg-info/
 .DS_Store
 ._*
+# Personal memory vault — health data, never committed (keep the dir via .gitkeep).
+memory/vault/*
+!memory/vault/.gitkeep

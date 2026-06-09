@@ -26,7 +26,14 @@
       "Bash(/Users/mattiapiatti/.voicebot-client-venv/bin/python scripts/mic_switcher.py)",
       "Bash(python3 -m py_compile scripts/mic_switcher.py src/voicebot/server.py)",
       "Bash(git config *)",
-      "Bash(git ls-remote *)"
+      "Bash(git ls-remote *)",
+      "Bash(git commit -q -m 'Initial baseline: local voice-only hormonal health companion \\(STT + Ollama + TTS\\) *)",
+      "Bash(git branch *)",
+      "Bash(git remote *)",
+      "Bash(git push *)",
+      "Bash(python3 -m ruff check src tests)",
+      "Bash(python3 -m ruff check src/voicebot/memory tests/test_memory.py)",
+      "Bash(python3 -m ruff check --fix src/voicebot/memory tests/test_memory.py)"
     ],
     "additionalDirectories": [
       "/Volumes/ARCHIVE/SUPSI/07. Subject/12. Designing Intelligent Experiences/wayra_test/src/wayra"

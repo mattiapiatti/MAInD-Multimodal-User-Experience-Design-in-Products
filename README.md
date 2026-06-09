@@ -164,6 +164,52 @@ the PCM frames, send `eou`, and play back every binary frame received until
 
 ---
 
+## Memory — adaptive Hebbian vault
+
+The companion keeps a real, persistent long-term memory: an **Obsidian-style vault**
+of linked markdown notes (`memory/vault/*.md`), one note per concept (a symptom, the
+therapy, a preference, a pattern). The links between notes form a **Hebbian
+network** — weighted associations that strengthen when memories are used together and
+fade when they are not. No embeddings, no cloud, no extra model: it reuses the same
+local Ollama, and the vault is plain files you can open directly in Obsidian.
+
+```
+                 read path (no LLM, ~instant)
+utterance ──lexical seed──▶ fired notes ──spreading activation──▶ recalled context
+                                                                    │ prepended to the prompt
+                                                                    ▼
+                                                                  reply  ── spoken ──▶
+                 write path (local LLM, in the background, after the reply)
+reply ──▶ extract durable facts ──▶ upsert notes ──▶ reinforce co-active links ──▶ decay unused
+```
+
+- **Read** is pure in-memory graph work (lexical match + spreading activation), so it
+  adds no latency to speech.
+- **Write** runs *after* the reply is spoken, in a background thread, so the one local
+  LLM call that distils the turn into notes never delays the voice loop.
+- **`reset` clears only the short conversation, never the vault.** Memory survives
+  `make restart` and rebuilds (the vault is a host bind-mount).
+
+Each note carries its Hebbian edges in the frontmatter and renders them as Obsidian
+`[[wikilinks]]`:
+
+```markdown
+---
+id: hot-flashes
+type: symptom
+aliases: [hot flash, night sweats]
+links: [menopause-hrt:0.820, sleep:0.450]
+---
+Reports hot flashes at night, three cycles in a row.
+
+Related: [[menopause-hrt]] [[sleep]]
+```
+
+> The vault holds personal health data and is **git-ignored** — only an empty
+> `memory/vault/.gitkeep` is tracked.
+
+---
+
 ## Configuration
 
 All settings come from environment variables (see [.env.example](.env.example)).
@@ -178,6 +224,13 @@ The defaults assume OrbStack + host Ollama and need no changes.
 | `VOICEBOT_WS_PORT` | `8765` | WebSocket port |
 | `VOICEBOT_MAX_TOKENS` | `512` | reply length cap |
 | `VOICEBOT_LOG_JSON` | `false` | structured JSON logs |
+| `VOICEBOT_MEMORY_ENABLED` | `true` | enable the adaptive Hebbian memory |
+| `VOICEBOT_MEMORY_VAULT_PATH` | `/app/memory/vault` | note vault location (bind-mounted) |
+| `VOICEBOT_MEMORY_ETA` | `0.3` | Hebbian learning rate (link strengthening) |
+| `VOICEBOT_MEMORY_DECAY_TAU_DAYS` | `30` | forgetting time constant for unused links |
+
+The remaining `VOICEBOT_MEMORY_*` knobs (recall breadth, spreading-activation
+damping, prune/display floors) are listed in [.env.example](.env.example).
 
 To use a different Whisper model, set both the compose build arg
 `WHISPER_MODEL` (so it is baked into the image) and `VOICEBOT_WHISPER_MODEL`.
