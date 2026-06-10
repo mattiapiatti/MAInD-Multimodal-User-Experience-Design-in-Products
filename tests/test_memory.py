@@ -6,7 +6,7 @@ exercised here; these cover the pure logic behind it.
 
 from datetime import UTC, datetime, timedelta
 
-from voicebot.memory import graph, recall, vault
+from voicebot.memory import MemoryStore, graph, recall, vault
 from voicebot.memory.vault import Note
 
 NOW = datetime(2026, 6, 9, 12, 0, 0, tzinfo=UTC)
@@ -140,3 +140,43 @@ def test_recall_without_a_match_returns_only_profile():
     )
     assert active == []
     assert "On menopause HRT." in block
+
+
+# -- knowledge base separation + wipe safety -------------------------------- #
+
+
+def _reference(nid, content, aliases):
+    return _note(nid, ntype="reference", content=content, aliases=aliases)
+
+
+def test_recall_fires_admin_knowledge_on_lexical_match(tmp_path):
+    personal = {"sleep": _reference("sleep", "Sleep has been poor.", ["sleep"])}
+    knowledge = {
+        "estrogen-follicular": _reference(
+            "estrogen-follicular",
+            "Estrogen rises through the follicular phase.",
+            ["estrogen", "follicular phase"],
+        )
+    }
+    store = MemoryStore(tmp_path, personal, knowledge)
+    block, active = store.recall("tell me about the follicular phase")
+    assert "estrogen-follicular" in active  # admin note fired by its alias
+    assert "Estrogen rises through the follicular phase." in block
+
+
+def test_wipe_clears_personal_vault_but_keeps_knowledge(tmp_path):
+    # A personal note exists on disk; the knowledge base lives elsewhere.
+    personal_note = _note("hot-flashes", content="Reports hot flashes.")
+    vault.write_note(tmp_path, personal_note)
+    knowledge = {
+        "estrogen-follicular": _reference("estrogen-follicular", "Estrogen rises.", ["estrogen"])
+    }
+    store = MemoryStore(tmp_path, {"hot-flashes": personal_note}, knowledge)
+
+    store.wipe()
+
+    # Personal note gone from memory and from disk...
+    assert list(tmp_path.glob("*.md")) == []
+    # ...but the admin knowledge survives and still answers.
+    _, active = store.recall("what about estrogen")
+    assert "estrogen-follicular" in active

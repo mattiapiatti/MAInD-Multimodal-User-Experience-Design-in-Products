@@ -57,7 +57,22 @@
       "Bash(cat compose.yaml)",
       "Bash(sed -n '110,160p' src/voicebot/memory/vault.py)",
       "Bash(python3 -c \"import socket; socket.create_connection\\(\\('127.0.0.1',8765\\),2\\); print\\('ws port OPEN'\\)\")",
-      "Bash(break)"
+      "Bash(break)",
+      "Bash(open voice_samples/)",
+      "Bash(python3 -c \"import socket; socket.create_connection\\(\\('127.0.0.1',8765\\),2\\)\")",
+      "Bash(python -m pytest tests/test_memory.py -q)",
+      "Bash(PYTHONPATH=src python -m pytest tests/test_memory.py -q)",
+      "Bash(PYTHONPATH=src python scripts/ingest_knowledge.py /tmp/sample_doc.txt --no-llm --dry-run)",
+      "Bash(ruff check *)",
+      "Bash(PYTHONPATH=src python -c \"from voicebot.memory import vault; from pathlib import Path; n=vault.load_all\\(Path\\('memory/knowledge'\\)\\); print\\('loaded notes:', list\\(n\\)\\)\")",
+      "Bash(PYTHONPATH=src python -c \"import pypdf; print\\('pypdf', pypdf.__version__\\)\")",
+      "Bash(curl -s -m 4 http://127.0.0.1:11434/api/tags)",
+      "Bash(pip install *)",
+      "Bash(curl -s -m 5 http://127.0.0.1:11434/api/tags)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('\\\\n'.join\\(m['name'] for m in d.get\\('models',[]\\)\\)\\)\")",
+      "Bash(PYTHONPATH=src python scripts/ingest_knowledge.py \"/Volumes/ARCHIVE/SUPSI/07. Subject/13. Multimodal User Experience Design in Products/literacy-hormones\" --no-llm --dry-run)",
+      "Bash(PYTHONPATH=src python scripts/ingest_knowledge.py \"/Volumes/ARCHIVE/SUPSI/07. Subject/13. Multimodal User Experience Design in Products/literacy-hormones\" --no-llm)",
+      "Bash(PYTHONPATH=src python -c ' *)"
     ],
     "additionalDirectories": [
       "/Volumes/ARCHIVE/SUPSI/07. Subject/12. Designing Intelligent Experiences/wayra_test/src/wayra"

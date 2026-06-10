@@ -32,6 +32,10 @@ dev = [
     "pytest>=8.3",
     "ruff>=0.7",
 ]
+# Admin tooling for scripts/ingest_knowledge.py (PDF reference ingestion).
+ingest = [
+    "pypdf>=4.0",
+]
 
 [project.scripts]
 voicebot = "voicebot.server:main"
