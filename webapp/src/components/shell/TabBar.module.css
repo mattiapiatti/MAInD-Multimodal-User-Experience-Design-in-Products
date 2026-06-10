@@ -16,8 +16,10 @@
     rgba(255, 255, 255, 0.62) 0%,
     rgba(255, 255, 255, 0.42) 100%
   );
-  backdrop-filter: saturate(1.8) blur(22px);
-  -webkit-backdrop-filter: saturate(1.8) blur(22px);
+  /* Lighter blur radius keeps the glass look without the scroll-jank cost of a
+     large-radius backdrop filter on mobile GPUs. */
+  backdrop-filter: saturate(1.5) blur(14px);
+  -webkit-backdrop-filter: saturate(1.5) blur(14px);
   border: 1px solid rgba(255, 255, 255, 0.65);
   border-radius: var(--radius-pill);
   box-shadow:
@@ -27,6 +29,10 @@
     inset 0 -1px 1px rgba(255, 255, 255, 0.3);
   z-index: var(--z-nav);
   width: 75%;
+  /* Isolate into its own compositing layer so the blur doesn't repaint on every
+     content scroll frame. */
+  will-change: transform;
+  transform: translateX(-50%) translateZ(0);
 }
 
 .tab {
