@@ -7,8 +7,8 @@ import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Alert from "@/components/ui/Alert";
 import {
-  createCodeAction,
-  simulatePairAction,
+  claimCodeAction,
+  simulateDeviceAction,
   removeDeviceAction,
 } from "@/app/(app)/device/actions";
 import styles from "./DeviceManager.module.css";
@@ -29,53 +29,56 @@ function formatDate(iso) {
 export default function DeviceManager({ devices }) {
   const router = useRouter();
   const [code, setCode] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
+  const [sim, setSim] = useState(null); // { code } shown on the simulated screen
 
   const hasDevice = devices.some((d) => d.status === "active");
 
-  async function generate() {
+  async function pair(e) {
+    e?.preventDefault();
     setError("");
-    setBusy(true);
+    setBusy("pair");
     try {
-      const res = await createCodeAction(null);
-      setCode(res.code);
-    } catch {
-      setError("Couldn't generate the code. Please try again.");
+      const res = await claimCodeAction(code);
+      if (!res.ok) {
+        setError(
+          {
+            device_taken: "This device is already paired to another account.",
+            code_used: "That code was already used. Show a new one on the device.",
+            code_expired: "That code expired. Show a new one on the device.",
+            invalid_code: "Code not found. Check the 6 characters and try again.",
+          }[res.error] || "Pairing failed. Try again.",
+        );
+      } else {
+        setCode("");
+        setSim(null);
+        router.refresh();
+      }
     } finally {
-      setBusy(false);
+      setBusy("");
     }
   }
 
   async function simulate() {
-    if (!code) return;
     setError("");
-    setBusy(true);
+    setBusy("sim");
     try {
-      const res = await simulatePairAction(code);
-      if (!res.ok) {
-        setError(
-          res.error === "device_taken"
-            ? "This device is already paired to another account."
-            : "Pairing failed. Generate a new code.",
-        );
-      } else {
-        setCode("");
-        router.refresh();
-      }
+      const res = await simulateDeviceAction();
+      setSim({ code: res.code });
     } finally {
-      setBusy(false);
+      setBusy("");
     }
   }
 
   async function remove(id) {
     if (!confirm("Unpair this device?")) return;
-    setBusy(true);
+    setBusy("remove");
     try {
       await removeDeviceAction(id);
       router.refresh();
     } finally {
-      setBusy(false);
+      setBusy("");
     }
   }
 
@@ -100,7 +103,7 @@ export default function DeviceManager({ devices }) {
                 <button
                   className={styles.unlink}
                   onClick={() => remove(d.id)}
-                  disabled={busy}
+                  disabled={!!busy}
                 >
                   Unpair
                 </button>
@@ -113,43 +116,55 @@ export default function DeviceManager({ devices }) {
       {!hasDevice ? (
         <Card
           title="Pair a device"
-          subtitle="Connect your Arduino Uno Q voice unit to this account."
+          subtitle="Your unit shows a 6-character code on its screen. Enter it here."
           padded
         >
           {error ? <Alert tone="error">{error}</Alert> : null}
 
-          {!code ? (
-            <>
-              <ol className={styles.steps}>
-                <li>Power on the unit and keep it on the same Wi-Fi.</li>
-                <li>Generate a pairing code below.</li>
-                <li>Enter the code on the unit to finish.</li>
-              </ol>
-              <Button fullWidth loading={busy} onClick={generate}>
-                Generate pairing code
+          <form className={styles.pairForm} onSubmit={pair}>
+            <input
+              className={styles.codeInput}
+              value={code}
+              onChange={(e) =>
+                setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6))
+              }
+              placeholder="ABC234"
+              inputMode="text"
+              autoCapitalize="characters"
+              autoComplete="off"
+              aria-label="Pairing code"
+              maxLength={6}
+            />
+            <Button
+              type="submit"
+              fullWidth
+              loading={busy === "pair"}
+              disabled={code.length !== 6}
+            >
+              Pair device
+            </Button>
+          </form>
+
+          <div className={styles.demo}>
+            <p className={styles.demoLabel}>No device yet?</p>
+            {sim ? (
+              <div className={styles.screenWrap}>
+                <div className={styles.screen} aria-label="Simulated device screen">
+                  <span className={styles.screenHint}>Pairing code</span>
+                  <span className={styles.screenCode}>{sim.code}</span>
+                  <span className={styles.screenSub}>enter it in the app</span>
+                </div>
+                <p className={styles.note}>
+                  This is what the round screen shows. Type the code above to
+                  pair.
+                </p>
+              </div>
+            ) : (
+              <Button variant="secondary" loading={busy === "sim"} onClick={simulate}>
+                Simulate a device
               </Button>
-            </>
-          ) : (
-            <div className={styles.codeBox}>
-              <span className={styles.codeLabel}>
-                Enter this code on the unit
-              </span>
-              <div className={styles.code}>{code}</div>
-              <span className={styles.codeHint}>Expires in 10 minutes</span>
-              <Button
-                fullWidth
-                variant="secondary"
-                loading={busy}
-                onClick={simulate}
-              >
-                Simulate pairing (demo)
-              </Button>
-              <p className={styles.note}>
-                No hardware? “Simulate” creates a test pairing. A real unit would
-                send the code to <code>/api/pair</code>.
-              </p>
-            </div>
-          )}
+            )}
+          </div>
         </Card>
       ) : null}
 

@@ -46,52 +46,96 @@
   padding: 6px 4px;
 }
 
-.steps {
-  margin: 0 0 18px 18px;
+/* pairing form */
+.pairForm {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  font-size: 14px;
+  gap: 14px;
+}
+.codeInput {
+  width: 100%;
+  text-align: center;
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: 0.32em;
+  text-indent: 0.32em;
+  padding: 16px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
   color: var(--color-fg);
-  line-height: 1.4;
+  text-transform: uppercase;
+}
+.codeInput::placeholder {
+  color: var(--color-fg-faint);
+  font-weight: 600;
+}
+.codeInput:focus {
+  outline: none;
+  border-color: var(--color-accent);
 }
 
-.codeBox {
+/* demo / simulated device */
+.demo {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  text-align: center;
+  gap: 12px;
 }
-.codeLabel {
+.demoLabel {
   font-size: 13px;
   color: var(--color-fg-muted);
 }
-.code {
-  font-size: 38px;
+
+.screenWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+/* circular device screen mock */
+.screen {
+  width: 184px;
+  height: 184px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 38%, #11201d 0%, #060d0c 78%);
+  border: 6px solid #1c1c1e;
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.28),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.screenHint {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6fb3a3;
+}
+.screenCode {
+  font-size: 34px;
   font-weight: 700;
-  letter-spacing: 0.22em;
-  padding: 14px 18px 14px 28px;
-  color: var(--color-accent-strong);
-  background: var(--color-accent-soft);
-  border-radius: var(--radius);
+  letter-spacing: 0.18em;
+  text-indent: 0.18em;
+  color: #e8fff7;
 }
-.codeHint {
-  font-size: 12px;
-  color: var(--color-fg-faint);
-  margin-bottom: 6px;
+.screenSub {
+  font-size: 10.5px;
+  color: #5e6f6b;
 }
+
 .note {
   font-size: 12px;
   line-height: 1.45;
   color: var(--color-fg-muted);
-}
-.note code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11px;
-  background: var(--color-inset);
-  padding: 1px 5px;
-  border-radius: 5px;
+  text-align: center;
+  max-width: 260px;
 }
 
 .exclusivity {

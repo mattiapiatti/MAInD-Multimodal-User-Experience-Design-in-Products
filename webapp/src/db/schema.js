@@ -167,20 +167,29 @@ export const devices = sqliteTable(
 );
 
 // =============================================================
-// PAIRING CODES — short-lived codes the app generates; the device claims one to
-// bind itself. Consumed on success.
+// PAIRING SESSIONS — device-initiated pairing. The DEVICE starts a session and
+// shows the 6-char code on its (circular) screen; the logged-in user types it
+// into the app to claim it, which binds the hardware to their account and issues
+// the device token. The device polls until the session is claimed.
 // =============================================================
-export const pairingCodes = sqliteTable(
-  "pairing_codes",
+export const pairingSessions = sqliteTable(
+  "pairing_sessions",
   {
-    code: text("code").primaryKey(), // 6-char human-typeable
-    userId: text("user_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
+    code: text("code").primaryKey(), // 6-char, shown on the device screen
+    hardwareId: text("hardware_id").notNull(),
     deviceName: text("device_name"),
+
+    // Filled in when the user claims the code from the app.
+    userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
+    deviceToken: text("device_token"),
+
+    status: text("status", { enum: ["pending", "claimed"] })
+      .default("pending")
+      .notNull(),
+
     expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
-    consumedAt: integer("consumed_at", { mode: "timestamp" }),
+    claimedAt: integer("claimed_at", { mode: "timestamp" }),
     createdAt: integer("created_at", { mode: "timestamp" }).default(now).notNull(),
   },
-  (t) => [index("pairing_codes_user_idx").on(t.userId)],
+  (t) => [index("pairing_sessions_hardware_idx").on(t.hardwareId)],
 );

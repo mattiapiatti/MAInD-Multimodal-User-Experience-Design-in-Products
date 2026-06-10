@@ -186,30 +186,11 @@ export class BackendDO extends DurableObject {
       .all();
   }
 
-  async createPairingCode(userId, deviceName) {
-    const code = newPairingCode();
-    const expiresAt = new Date(Date.now() + PAIRING_TTL_MS);
-    this.db
-      .insert(schema.pairingCodes)
-      .values({ code, userId, deviceName: deviceName || null, expiresAt })
-      .run();
-    return { code, expiresAt: expiresAt.toISOString() };
-  }
-
-  async claimPairingCode(code, hardwareId) {
-    const nowMs = Date.now();
-    const rows = this.db
-      .select()
-      .from(schema.pairingCodes)
-      .where(eq(schema.pairingCodes.code, code))
-      .limit(1)
-      .all();
-    const pairing = rows[0];
-    if (!pairing) return { ok: false, error: "invalid_code" };
-    if (pairing.consumedAt) return { ok: false, error: "code_used" };
-    if (new Date(pairing.expiresAt).getTime() < nowMs)
-      return { ok: false, error: "code_expired" };
-
+  /**
+   * Device-facing: a unit starts a pairing session and gets a code to show on
+   * its screen. If the hardware is already bound, returns its token instead.
+   */
+  async startPairing(hardwareId, deviceName) {
     const existing = this.db
       .select()
       .from(schema.devices)
@@ -217,28 +198,88 @@ export class BackendDO extends DurableObject {
       .limit(1)
       .all();
     if (existing[0]) {
-      return existing[0].userId === pairing.userId
-        ? { ok: true, deviceToken: existing[0].deviceToken, already: true }
-        : { ok: false, error: "device_taken" };
+      return { alreadyPaired: true, deviceToken: existing[0].deviceToken };
     }
 
-    const deviceToken = newToken();
+    // Clear any stale pending sessions for this hardware, then issue a new code.
     this.db
-      .insert(schema.devices)
-      .values({
-        id: newId("dev"),
-        hardwareId,
-        userId: pairing.userId,
-        name: pairing.deviceName || null,
-        deviceToken,
-      })
+      .delete(schema.pairingSessions)
+      .where(eq(schema.pairingSessions.hardwareId, hardwareId))
       .run();
+    const code = newPairingCode();
+    const expiresAt = new Date(Date.now() + PAIRING_TTL_MS);
     this.db
-      .update(schema.pairingCodes)
-      .set({ consumedAt: new Date() })
-      .where(eq(schema.pairingCodes.code, code))
+      .insert(schema.pairingSessions)
+      .values({ code, hardwareId, deviceName: deviceName || null, expiresAt })
       .run();
-    return { ok: true, deviceToken };
+    return { code, expiresAt: expiresAt.toISOString() };
+  }
+
+  /** Device-facing: poll a session by hardware; returns the token once claimed. */
+  async pollPairing(hardwareId) {
+    const rows = this.db
+      .select()
+      .from(schema.pairingSessions)
+      .where(eq(schema.pairingSessions.hardwareId, hardwareId))
+      .orderBy(desc(schema.pairingSessions.createdAt))
+      .limit(1)
+      .all();
+    const s = rows[0];
+    if (!s) return { status: "none" };
+    if (s.status === "claimed")
+      return { status: "paired", deviceToken: s.deviceToken };
+    if (new Date(s.expiresAt).getTime() < Date.now())
+      return { status: "expired" };
+    return { status: "pending" };
+  }
+
+  /**
+   * App-facing (authenticated): the user types the code shown on the device.
+   * Binds the hardware to this user (exclusive) and issues the device token.
+   */
+  async claimCode(userId, code, deviceName) {
+    const rows = this.db
+      .select()
+      .from(schema.pairingSessions)
+      .where(eq(schema.pairingSessions.code, code))
+      .limit(1)
+      .all();
+    const s = rows[0];
+    if (!s) return { ok: false, error: "invalid_code" };
+    if (s.status === "claimed") return { ok: false, error: "code_used" };
+    if (new Date(s.expiresAt).getTime() < Date.now())
+      return { ok: false, error: "code_expired" };
+
+    // Exclusivity: the hardware can only ever belong to one account.
+    const existing = this.db
+      .select()
+      .from(schema.devices)
+      .where(eq(schema.devices.hardwareId, s.hardwareId))
+      .limit(1)
+      .all();
+    if (existing[0] && existing[0].userId !== userId) {
+      return { ok: false, error: "device_taken" };
+    }
+
+    const deviceToken = existing[0]?.deviceToken || newToken();
+    if (!existing[0]) {
+      this.db
+        .insert(schema.devices)
+        .values({
+          id: newId("dev"),
+          hardwareId: s.hardwareId,
+          userId,
+          name: deviceName || s.deviceName || null,
+          deviceToken,
+        })
+        .run();
+    }
+    this.db
+      .update(schema.pairingSessions)
+      .set({ status: "claimed", userId, deviceToken, claimedAt: new Date() })
+      .where(eq(schema.pairingSessions.code, code))
+      .run();
+    return { ok: true, hardwareId: s.hardwareId };
   }
 
   async removeDevice(userId, deviceId) {

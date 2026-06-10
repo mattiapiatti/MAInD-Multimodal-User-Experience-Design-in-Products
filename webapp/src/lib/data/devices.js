@@ -8,19 +8,25 @@ export async function listDevices(userId) {
   return do_.listDevices(userId);
 }
 
-/** Generate a fresh pairing code → { code, expiresAt }. */
-export async function createPairingCode(userId, deviceName) {
+/** Device-facing: start a pairing session → { code } (or { alreadyPaired }). */
+export async function startPairing(hardwareId, deviceName) {
   const do_ = await getBackendDO();
-  return do_.createPairingCode(userId, deviceName);
+  return do_.startPairing(hardwareId, deviceName);
+}
+
+/** Device-facing: poll a pairing session → { status, deviceToken? }. */
+export async function pollPairing(hardwareId) {
+  const do_ = await getBackendDO();
+  return do_.pollPairing(hardwareId);
 }
 
 /**
- * Claim a code on behalf of a device, binding hardwareId to the code's user.
+ * App-facing: claim the code shown on the device, binding it to the user.
  * Exclusive: a hardware unit can only belong to one account.
  */
-export async function claimPairingCode(code, hardwareId) {
+export async function claimCode(userId, code, deviceName) {
   const do_ = await getBackendDO();
-  return do_.claimPairingCode(code, hardwareId);
+  return do_.claimCode(userId, code, deviceName);
 }
 
 /** Unpair (delete) a device the user owns. */

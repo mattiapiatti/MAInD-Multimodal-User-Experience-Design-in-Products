@@ -2,25 +2,32 @@
 
 import { revalidatePath } from "next/cache";
 import { requireOnboardedUser } from "@/lib/auth/guard";
-import { createPairingCode, claimPairingCode, removeDevice } from "@/lib/data/devices";
+import { startPairing, claimCode, removeDevice } from "@/lib/data/devices";
 import { newId } from "@/lib/ids";
 
-/** Generate a fresh pairing code for the current user → { code, expiresAt }. */
-export async function createCodeAction(deviceName) {
+/**
+ * The user types the code shown on the device's screen. Binds that device to
+ * their account (exclusive).
+ */
+export async function claimCodeAction(code) {
   const user = await requireOnboardedUser();
-  return createPairingCode(user.id, deviceName);
+  const clean = String(code || "").trim().toUpperCase();
+  if (clean.length !== 6) return { ok: false, error: "invalid_code" };
+  const res = await claimCode(user.id, clean);
+  if (res.ok) revalidatePath("/device");
+  return res;
 }
 
 /**
- * Demo helper: simulate the device claiming the code, so pairing can be shown
- * end-to-end without real hardware. A real unit calls POST /api/pair instead.
+ * Demo without hardware: spin up a fake device that "starts pairing" and shows
+ * a code on its (simulated) round screen. Returns the code to display; the user
+ * then types it into the app, exactly as with a real unit.
  */
-export async function simulatePairAction(code) {
+export async function simulateDeviceAction() {
   await requireOnboardedUser();
-  const fakeHardwareId = `SIM-${newId().slice(0, 12).toUpperCase()}`;
-  const res = await claimPairingCode(code, fakeHardwareId);
-  revalidatePath("/device");
-  return res;
+  const hardwareId = `SIM-${newId().slice(0, 10).toUpperCase()}`;
+  const res = await startPairing(hardwareId, "Simulated unit");
+  return { hardwareId, code: res.code, expiresAt: res.expiresAt };
 }
 
 export async function removeDeviceAction(deviceId) {
