@@ -1,0 +1,121 @@
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  text-align: center;
+}
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 0;
+}
+.statNum {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--color-accent);
+  letter-spacing: -0.02em;
+}
+.statLbl {
+  font-size: 12px;
+  color: var(--color-fg-muted);
+}
+.lastCheckin {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-border);
+  font-size: 13px;
+  color: var(--color-fg-muted);
+  text-align: center;
+}
+
+/* device CTA */
+.cta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px;
+  border-radius: var(--radius-card);
+  background: linear-gradient(
+    135deg,
+    var(--color-accent) 0%,
+    var(--color-accent-strong) 100%
+  );
+  color: #fff;
+  box-shadow: var(--shadow);
+}
+.ctaIcon {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+}
+.cta div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cta strong {
+  font-size: 15px;
+  font-weight: 700;
+}
+.cta span {
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+.deviceRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.deviceDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--color-success);
+}
+.deviceDot[data-status="revoked"] {
+  background: var(--color-fg-faint);
+}
+.deviceMeta {
+  font-size: 13px;
+  color: var(--color-fg-muted);
+}
+
+/* timeline */
+.timeline {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.tItem {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+}
+.tDate {
+  flex-shrink: 0;
+  width: 52px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-accent);
+}
+.tText {
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--color-fg);
+}
+
+.footerLink,
+.cta {
+  -webkit-tap-highlight-color: transparent;
+}
+.footerLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-accent);
+}

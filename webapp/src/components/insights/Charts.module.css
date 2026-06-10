@@ -1,0 +1,5 @@
+.chart {
+  width: 100%;
+  /* recharts reads computed colors; ensure CSS vars resolve in tooltip etc. */
+  font-family: var(--font-ui);
+}

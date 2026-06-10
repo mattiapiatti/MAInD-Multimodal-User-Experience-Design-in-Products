@@ -13,3 +13,7 @@ __pycache__/
 # memory files
 memory/*
 !memory/.gitkeep
+
+# Claude
+.claude/
+/claude/

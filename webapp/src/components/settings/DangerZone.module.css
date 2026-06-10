@@ -1,0 +1,29 @@
+.zone {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.text strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+.text span {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--color-fg-muted);
+}
+.row :global(button) {
+  flex-shrink: 0;
+}

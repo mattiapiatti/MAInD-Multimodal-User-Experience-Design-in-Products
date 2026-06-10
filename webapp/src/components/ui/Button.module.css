@@ -1,0 +1,77 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  min-height: 50px; /* comfortable touch target */
+  transition:
+    background var(--transition),
+    opacity var(--transition),
+    border-color var(--transition);
+  white-space: nowrap;
+}
+
+.button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.fullWidth {
+  width: 100%;
+}
+
+.primary {
+  background: var(--color-accent);
+  color: var(--color-accent-fg);
+}
+.primary:active:not(:disabled) {
+  background: var(--color-accent-strong);
+}
+
+.secondary {
+  background: var(--color-surface);
+  color: var(--color-fg);
+  border-color: var(--color-border);
+}
+.secondary:active:not(:disabled) {
+  background: var(--color-inset);
+}
+
+.ghost {
+  background: transparent;
+  color: var(--color-accent);
+}
+.ghost:active:not(:disabled) {
+  background: var(--color-accent-soft);
+}
+
+.danger {
+  background: var(--color-surface);
+  color: var(--color-danger);
+  border-color: #f0c9c4;
+}
+.danger:active:not(:disabled) {
+  background: var(--color-danger-soft);
+}
+
+.spinner {
+  width: 15px;
+  height: 15px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

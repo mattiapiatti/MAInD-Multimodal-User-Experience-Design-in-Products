@@ -1,0 +1,31 @@
+.note {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--color-fg-faint);
+}
+
+.kpis {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-sm);
+}
+.kpiNum {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--color-accent);
+  letter-spacing: -0.02em;
+}
+.kpiLbl {
+  font-size: 12px;
+  color: var(--color-fg-muted);
+}
