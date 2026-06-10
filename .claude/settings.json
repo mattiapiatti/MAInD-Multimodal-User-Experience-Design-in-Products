@@ -51,7 +51,13 @@
       "Bash(curl -sIL -o /dev/null -w \"voices: %{http_code}\\\\n\" \"https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin\")",
       "Bash(timeout 90 make say TEXT=\"hi, my night bus just got cancelled in rural Vietnam and it's 2am — what do I do?\")",
       "Bash(make say *)",
-      "Bash(open reply-kokoro.wav)"
+      "Bash(open reply-kokoro.wav)",
+      "Bash(python3 -c \"import socket; socket.create_connection\\(\\('127.0.0.1',8765\\),3\\); print\\('ws port open'\\)\")",
+      "Bash(cat docker-compose.yml)",
+      "Bash(cat compose.yaml)",
+      "Bash(sed -n '110,160p' src/voicebot/memory/vault.py)",
+      "Bash(python3 -c \"import socket; socket.create_connection\\(\\('127.0.0.1',8765\\),2\\); print\\('ws port OPEN'\\)\")",
+      "Bash(break)"
     ],
     "additionalDirectories": [
       "/Volumes/ARCHIVE/SUPSI/07. Subject/12. Designing Intelligent Experiences/wayra_test/src/wayra"
