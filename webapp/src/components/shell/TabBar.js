@@ -25,6 +25,7 @@ export default function TabBar() {
             href={href}
             className={`${styles.tab} ${active ? styles.active : ""}`}
             aria-current={active ? "page" : undefined}
+            aria-label={label}
           >
             <Icon className={styles.icon} aria-hidden="true" />
             <span className={styles.label}>{label}</span>

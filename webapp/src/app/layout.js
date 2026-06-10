@@ -8,6 +8,16 @@ export const metadata = {
   description:
     "Voice companion for hormonal health. Account, device and insights.",
   robots: { index: false, follow: false },
+  // Installable PWA. Once added to the Home Screen on iOS/Android, it launches
+  // full-screen with no browser address bar or toolbar chrome.
+  manifest: "/manifest.webmanifest",
+  applicationName: "Companion",
+  appleWebApp: {
+    capable: true,
+    title: "Companion",
+    statusBarStyle: "default",
+  },
+  formatDetection: { telephone: false },
 };
 
 export const viewport = {

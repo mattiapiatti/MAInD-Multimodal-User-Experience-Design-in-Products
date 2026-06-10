@@ -101,6 +101,13 @@ body {
   /* Lock the look to a phone-width column even on desktop, so the design is
      always evaluated as the mobile-only product it is. */
   overscroll-behavior-y: none;
+  /* Native-app feel when launched standalone from the Home Screen. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 a {
@@ -118,6 +125,9 @@ select,
 textarea {
   font-family: inherit;
   font-size: 16px; /* >=16px stops iOS Safari from zooming on focus */
+  /* Keep text fields selectable/editable despite the app-wide no-select. */
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 h1,
