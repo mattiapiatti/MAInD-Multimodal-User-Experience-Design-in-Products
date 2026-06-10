@@ -1,13 +1,20 @@
-// Plain Node environment access (no Cloudflare bindings in the self-hosted
-// build). Values come from process.env, populated by .env / docker-compose.
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 
-export function getEnv() {
-  return {
-    DATABASE_PATH: process.env.DATABASE_PATH || "./data/app.db",
-    BETTER_AUTH_SECRET:
-      process.env.BETTER_AUTH_SECRET || "dev-only-secret-change-me",
-    BETTER_AUTH_URL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
-    VOICEBOT_API_URL: process.env.VOICEBOT_API_URL || "http://voicebot:8766",
-    VOICEBOT_WS_URL: process.env.VOICEBOT_WS_URL || "ws://localhost:8765",
-  };
+/**
+ * Cloudflare bindings + vars for the current request. On Workers these are not
+ * in process.env — they come from the OpenNext context. Async form works in all
+ * server contexts (Server Components, Server Actions, Route Handlers).
+ */
+export async function getEnv() {
+  const { env } = await getCloudflareContext({ async: true });
+  return env;
+}
+
+/**
+ * The singleton backend Durable Object stub. All accounts, sessions, onboarding,
+ * and device data live inside it; this is the only way the Worker reaches them.
+ */
+export async function getBackendDO() {
+  const env = await getEnv();
+  return env.AUTH_DO.getByName("main");
 }

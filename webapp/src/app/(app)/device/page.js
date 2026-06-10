@@ -8,7 +8,8 @@ export const metadata = { title: "Device" };
 export default async function DevicePage() {
   const user = await requireOnboardedUser();
   // Plain serializable objects for the client component.
-  const devices = listDevices(user.id).map((d) => ({
+  const rows = await listDevices(user.id);
+  const devices = rows.map((d) => ({
     id: d.id,
     name: d.name,
     status: d.status,

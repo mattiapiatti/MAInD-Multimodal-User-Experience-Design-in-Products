@@ -25,7 +25,7 @@ export async function POST(req) {
     );
   }
 
-  const res = claimPairingCode(code, hardwareId);
+  const res = await claimPairingCode(code, hardwareId);
   if (!res.ok) {
     const status = res.error === "device_taken" ? 409 : 400;
     return NextResponse.json(res, { status });

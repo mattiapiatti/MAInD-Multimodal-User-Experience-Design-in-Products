@@ -20,6 +20,6 @@ export async function completeOnboardingAction(values) {
   if (!parsed.success) {
     return { ok: false, errors: parsed.error.flatten().fieldErrors };
   }
-  upsertOnboarding(user.id, parsed.data, { complete: true });
+  await upsertOnboarding(user.id, parsed.data, { complete: true });
   redirect("/home");
 }

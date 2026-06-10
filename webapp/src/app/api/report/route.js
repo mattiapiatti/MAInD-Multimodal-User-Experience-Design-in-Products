@@ -17,7 +17,7 @@ export async function GET() {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  const profile = getOnboarding(user.id);
+  const profile = await getOnboarding(user.id);
   const summary = getSummary();
   const timeline = getTimeline();
   const frequency = getFrequencyByMonth();

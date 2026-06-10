@@ -1,0 +1,16 @@
+{
+  "name": "cf-spike",
+  "main": "src/index.js",
+  "compatibility_date": "2024-11-12",
+  "compatibility_flags": ["nodejs_compat"],
+  "durable_objects": {
+    "bindings": [{ "name": "AUTH_DO", "class_name": "AuthDO" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["AuthDO"] }],
+  // Bundle the generated .sql migration files as text so the DO can run them.
+  "rules": [{ "type": "Text", "globs": ["**/*.sql"], "fallthrough": true }],
+  "vars": {
+    "BETTER_AUTH_URL": "http://localhost:8787",
+    "BETTER_AUTH_SECRET": "spike-secret-at-least-32-characters-long"
+  }
+}

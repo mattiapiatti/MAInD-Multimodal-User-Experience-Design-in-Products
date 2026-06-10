@@ -1,12 +1,9 @@
 "use server";
 
-import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
 
-import { getDb, schema } from "@/db";
-import { getAuth } from "@/lib/auth";
+import { getBackendDO } from "@/lib/env";
 import { requireOnboardedUser } from "@/lib/auth/guard";
 import { onboardingSchema } from "@/lib/validation/onboarding";
 import { upsertOnboarding } from "@/lib/data/onboarding";
@@ -19,7 +16,7 @@ export async function updateProfileAction(values) {
   if (!parsed.success) {
     return { ok: false, errors: parsed.error.flatten().fieldErrors };
   }
-  upsertOnboarding(user.id, parsed.data);
+  await upsertOnboarding(user.id, parsed.data);
   revalidatePath("/settings");
   revalidatePath("/home");
   return { ok: true };
@@ -28,28 +25,19 @@ export async function updateProfileAction(values) {
 /** Ask the voice backend to erase the long-term memory for this user. */
 export async function wipeHistoryAction() {
   const user = await requireOnboardedUser();
-  const res = await wipeMemory(user.id);
-  return res; // { ok } or { ok:false, offline:true }
+  return wipeMemory(user.id);
 }
 
-/** Delete the account and everything cascading from it, then sign out. */
+/** Delete the account (cascades to sessions/onboarding/devices), then bounce. */
 export async function deleteAccountAction() {
   const user = await requireOnboardedUser();
 
   // Best-effort: wipe the brain's memory too before dropping the account.
   await wipeMemory(user.id);
 
-  const db = getDb();
-  // FK cascade removes sessions, accounts, onboarding, devices, pairing codes.
-  db.delete(schema.users).where(eq(schema.users.id, user.id)).run();
+  const do_ = await getBackendDO();
+  await do_.deleteUser(user.id);
 
-  // Clear the auth cookie/session on the client.
-  try {
-    const auth = getAuth();
-    await auth.api.signOut({ headers: await headers() });
-  } catch {
-    /* session already gone with the user row */
-  }
-
+  // The session row is gone with the user, so the stale cookie is now invalid.
   redirect("/register");
 }

@@ -1,12 +1,10 @@
 import { defineConfig } from "drizzle-kit";
 
-// Local SQLite (better-sqlite3) — no Cloudflare D1. The database file lives in
-// ./data so it can be bind-mounted as a Docker volume and survive rebuilds.
+// Durable Object SQLite storage (not D1, not a local file). Migrations are
+// generated into ./drizzle and bundled into the Worker as text.
 export default defineConfig({
+  out: "./drizzle",
   schema: "./src/db/schema.js",
-  out: "./src/db/migrations",
   dialect: "sqlite",
-  dbCredentials: {
-    url: process.env.DATABASE_PATH || "./data/app.db",
-  },
+  driver: "durable-sqlite",
 });

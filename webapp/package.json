@@ -2,22 +2,22 @@
   "name": "voicebot-webapp",
   "version": "0.1.0",
   "private": true,
-  "description": "Mobile web companion for the local voice health assistant — accounts, onboarding, device pairing, insights.",
+  "description": "Mobile web companion for the local voice health assistant — accounts, onboarding, device pairing, insights. Deployed on Cloudflare Workers (OpenNext); backend state in a Durable Object (SQLite).",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
     "lint": "next lint",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "node src/db/migrate.mjs",
-    "db:studio": "drizzle-kit studio"
+    "cf:build": "./scripts/cf-build.sh",
+    "cf:preview": "./scripts/cf-build.sh dev",
+    "cf:deploy": "./scripts/cf-build.sh deploy"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
+    "@opennextjs/cloudflare": "^1.18.0",
     "better-auth": "^1.6.13",
-    "better-sqlite3": "^12.2.0",
     "drizzle-orm": "^0.45.2",
-    "next": "16.2.2",
+    "next": "^16.2.6",
     "pdf-lib": "^1.17.1",
     "react": "19.2.4",
     "react-dom": "19.2.4",
@@ -28,6 +28,7 @@
   "devDependencies": {
     "drizzle-kit": "^0.31.10",
     "eslint": "^9",
-    "eslint-config-next": "16.2.2"
+    "eslint-config-next": "^16.2.6",
+    "wrangler": "^4.80.0"
   }
 }

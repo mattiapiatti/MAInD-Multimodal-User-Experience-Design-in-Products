@@ -12,8 +12,10 @@ export const metadata = { title: "Home" };
 
 export default async function HomePage() {
   const user = await requireOnboardedUser();
-  const profile = getOnboarding(user.id);
-  const devices = listDevices(user.id);
+  const [profile, devices] = await Promise.all([
+    getOnboarding(user.id),
+    listDevices(user.id),
+  ]);
   const summary = getSummary();
   const timeline = getTimeline();
   const name = profile?.preferredName || user.name || "";

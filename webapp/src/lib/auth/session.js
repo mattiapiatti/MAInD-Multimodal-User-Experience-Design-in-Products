@@ -1,13 +1,15 @@
 import { headers } from "next/headers";
-import { getAuth } from "@/lib/auth";
+import { getBackendDO } from "@/lib/env";
 
 /**
- * Current server-side session (Server Components, Server Actions, Route Handlers).
+ * Current server-side session. Better Auth runs inside the Durable Object, so we
+ * read it via RPC, forwarding the request cookies.
  * @returns {Promise<{ session: object, user: object } | null>}
  */
 export async function getSession() {
-  const auth = getAuth();
-  return auth.api.getSession({ headers: await headers() });
+  const do_ = await getBackendDO();
+  const h = Object.fromEntries(await headers());
+  return do_.getSession(h);
 }
 
 /** Logged-in user or null. */

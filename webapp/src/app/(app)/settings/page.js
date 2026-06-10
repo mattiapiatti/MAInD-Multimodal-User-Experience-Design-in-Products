@@ -12,7 +12,7 @@ export const metadata = { title: "Settings" };
 
 export default async function SettingsPage() {
   const user = await requireOnboardedUser();
-  const profile = getOnboarding(user.id);
+  const profile = await getOnboarding(user.id);
 
   const defaultValues = {
     preferredName: profile?.preferredName || "",
