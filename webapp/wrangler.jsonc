@@ -29,6 +29,6 @@
     // Public origin of the deployed Worker. Better Auth uses it for the CSRF
     // origin check and cookie/redirect base. Secret BETTER_AUTH_SECRET is set
     // via `wrangler secret put` (deployed) / .dev.vars (local), not here.
-    "BETTER_AUTH_URL": "https://voicebot-webapp.administration-981.workers.dev"
+    "BETTER_AUTH_URL": "https://voicebot-webapp.mattiapiatti.eu"
   }
 }

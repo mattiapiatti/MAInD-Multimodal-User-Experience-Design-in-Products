@@ -63,6 +63,9 @@ export class BackendDO extends DurableObject {
       trustedOrigins: (request) => {
         const base = [
           env.BETTER_AUTH_URL,
+          // Both production origins (custom domain + workers.dev) plus local dev.
+          "https://voicebot-webapp.mattiapiatti.eu",
+          "https://voicebot-webapp.administration-981.workers.dev",
           "http://localhost:8787",
           "http://localhost:3000",
         ].filter(Boolean);

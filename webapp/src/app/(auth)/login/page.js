@@ -27,7 +27,13 @@ export default function LoginPage() {
       password: values.password,
     });
     if (error) {
-      setServerError("Incorrect email or password.");
+      // 401 = bad credentials; anything else is a real failure we shouldn't
+      // mislabel (e.g. origin/CSRF, server error).
+      setServerError(
+        error.status === 401
+          ? "Incorrect email or password."
+          : "Sign-in failed. Please try again.",
+      );
       return;
     }
     // Hard navigation so the server re-reads the fresh session cookie and routes
