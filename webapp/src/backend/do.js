@@ -7,7 +7,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 
 import migrations from "../../drizzle/migrations.js";
 import * as schema from "../db/schema.js";
-import { newId, newToken, newPairingCode } from "../lib/ids.js";
+import { newId, newToken, newPairingCode, hashSecret } from "../lib/ids.js";
 
 const PAIRING_TTL_MS = 10 * 60 * 1000;
 
@@ -188,20 +188,14 @@ export class BackendDO extends DurableObject {
 
   /**
    * Device-facing: a unit starts a pairing session and gets a code to show on
-   * its screen. If the hardware is already bound, returns its token instead.
+   * its screen. The device sends a high-entropy secret it keeps; the token is
+   * later handed back ONLY to a poller presenting that same secret — so a bare
+   * hardwareId can never retrieve a token. Never returns a token here.
    */
-  async startPairing(hardwareId, deviceName) {
-    const existing = this.db
-      .select()
-      .from(schema.devices)
-      .where(eq(schema.devices.hardwareId, hardwareId))
-      .limit(1)
-      .all();
-    if (existing[0]) {
-      return { alreadyPaired: true, deviceToken: existing[0].deviceToken };
-    }
-
-    // Clear any stale pending sessions for this hardware, then issue a new code.
+  async startPairing(hardwareId, deviceSecret, deviceName) {
+    const deviceSecretHash = deviceSecret ? await hashSecret(deviceSecret) : null;
+    // Drop any stale session for this hardware, then issue a fresh code. (A
+    // device that lost its token must re-pair with a new user-entered code.)
     this.db
       .delete(schema.pairingSessions)
       .where(eq(schema.pairingSessions.hardwareId, hardwareId))
@@ -210,13 +204,23 @@ export class BackendDO extends DurableObject {
     const expiresAt = new Date(Date.now() + PAIRING_TTL_MS);
     this.db
       .insert(schema.pairingSessions)
-      .values({ code, hardwareId, deviceName: deviceName || null, expiresAt })
+      .values({
+        code,
+        hardwareId,
+        deviceSecretHash,
+        deviceName: deviceName || null,
+        expiresAt,
+      })
       .run();
     return { code, expiresAt: expiresAt.toISOString() };
   }
 
-  /** Device-facing: poll a session by hardware; returns the token once claimed. */
-  async pollPairing(hardwareId) {
+  /**
+   * Device-facing: poll a session by hardware. The token is returned at most
+   * once, and only to a caller presenting the matching secret. After delivery
+   * the token is cleared from the session so it can't be re-fetched.
+   */
+  async pollPairing(hardwareId, deviceSecret) {
     const rows = this.db
       .select()
       .from(schema.pairingSessions)
@@ -226,11 +230,26 @@ export class BackendDO extends DurableObject {
       .all();
     const s = rows[0];
     if (!s) return { status: "none" };
-    if (s.status === "claimed")
-      return { status: "paired", deviceToken: s.deviceToken };
-    if (new Date(s.expiresAt).getTime() < Date.now())
-      return { status: "expired" };
-    return { status: "pending" };
+    if (s.status !== "claimed") {
+      if (new Date(s.expiresAt).getTime() < Date.now())
+        return { status: "expired" };
+      return { status: "pending" };
+    }
+    // Claimed. Hand the token over once, only to the device that started it.
+    const ok =
+      !s.deliveredAt &&
+      s.deviceToken &&
+      deviceSecret &&
+      s.deviceSecretHash &&
+      (await hashSecret(deviceSecret)) === s.deviceSecretHash;
+    if (!ok) return { status: "paired" }; // no token (already delivered / wrong secret)
+
+    this.db
+      .update(schema.pairingSessions)
+      .set({ deliveredAt: new Date(), deviceToken: null })
+      .where(eq(schema.pairingSessions.code, s.code))
+      .run();
+    return { status: "paired", deviceToken: s.deviceToken };
   }
 
   /**

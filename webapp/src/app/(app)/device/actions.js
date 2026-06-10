@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireOnboardedUser } from "@/lib/auth/guard";
 import { startPairing, claimCode, removeDevice } from "@/lib/data/devices";
-import { newId } from "@/lib/ids";
+import { newId, newToken } from "@/lib/ids";
 
 /**
  * The user types the code shown on the device's screen. Binds that device to
@@ -26,7 +26,7 @@ export async function claimCodeAction(code) {
 export async function simulateDeviceAction() {
   await requireOnboardedUser();
   const hardwareId = `SIM-${newId().slice(0, 10).toUpperCase()}`;
-  const res = await startPairing(hardwareId, "Simulated unit");
+  const res = await startPairing(hardwareId, newToken(), "Simulated unit");
   return { hardwareId, code: res.code, expiresAt: res.expiresAt };
 }
 

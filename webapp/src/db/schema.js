@@ -179,6 +179,11 @@ export const pairingSessions = sqliteTable(
     hardwareId: text("hardware_id").notNull(),
     deviceName: text("device_name"),
 
+    // SHA-256 of a secret the device generates and keeps. The device token is
+    // only ever handed back to a poller that presents this same secret, so a
+    // bare hardwareId can't retrieve it.
+    deviceSecretHash: text("device_secret_hash"),
+
     // Filled in when the user claims the code from the app.
     userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
     deviceToken: text("device_token"),
@@ -189,6 +194,8 @@ export const pairingSessions = sqliteTable(
 
     expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
     claimedAt: integer("claimed_at", { mode: "timestamp" }),
+    // Set when the token has been handed to the device — once only.
+    deliveredAt: integer("delivered_at", { mode: "timestamp" }),
     createdAt: integer("created_at", { mode: "timestamp" }).default(now).notNull(),
   },
   (t) => [index("pairing_sessions_hardware_idx").on(t.hardwareId)],

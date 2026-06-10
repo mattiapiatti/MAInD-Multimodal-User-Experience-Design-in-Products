@@ -8,16 +8,16 @@ export async function listDevices(userId) {
   return do_.listDevices(userId);
 }
 
-/** Device-facing: start a pairing session → { code } (or { alreadyPaired }). */
-export async function startPairing(hardwareId, deviceName) {
+/** Device-facing: start a pairing session → { code }. */
+export async function startPairing(hardwareId, deviceSecret, deviceName) {
   const do_ = await getBackendDO();
-  return do_.startPairing(hardwareId, deviceName);
+  return do_.startPairing(hardwareId, deviceSecret, deviceName);
 }
 
-/** Device-facing: poll a pairing session → { status, deviceToken? }. */
-export async function pollPairing(hardwareId) {
+/** Device-facing: poll a pairing session → { status, deviceToken? (once) }. */
+export async function pollPairing(hardwareId, deviceSecret) {
   const do_ = await getBackendDO();
-  return do_.pollPairing(hardwareId);
+  return do_.pollPairing(hardwareId, deviceSecret);
 }
 
 /**

@@ -15,6 +15,13 @@
       "when": 1781116000000,
       "tag": "0001_reverse_pairing",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1781116500000,
+      "tag": "0002_pairing_secret",
+      "breakpoints": true
     }
   ]
 }

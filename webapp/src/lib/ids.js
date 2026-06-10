@@ -30,6 +30,13 @@ export function newToken() {
   return toBase64Url(randomBytes(32));
 }
 
+/** SHA-256 hex of an input — used to store the device pairing secret. */
+export async function hashSecret(secret) {
+  const data = new TextEncoder().encode(String(secret));
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  return toHex(new Uint8Array(digest));
+}
+
 /** Human-typeable pairing code: 6 chars, no ambiguous glyphs. */
 export function newPairingCode() {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I
