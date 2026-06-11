@@ -9,6 +9,10 @@ import {
   CARE_CONTEXTS,
   GOAL_OPTIONS,
   SYMPTOM_OPTIONS,
+  METHOD_OPTIONS,
+  STAGE_OPTIONS,
+  PRONOUN_PRESETS,
+  PRONOUN_PREFER_NOT,
 } from "@/lib/validation/onboarding";
 import TextField from "@/components/ui/TextField";
 import Button from "@/components/ui/Button";
@@ -69,9 +73,59 @@ function RadioCards({ options, value, onChange }) {
   );
 }
 
+/**
+ * Pronoun selector: preset cards + a "Custom…" card that reveals a free-text
+ * field. The chosen string (preset, custom text, or "Prefer not to say") is what
+ * gets stored. In edit mode a stored value that isn't a preset preselects Custom.
+ */
+function PronounSelect({ value = "", onChange }) {
+  const presetMatch = PRONOUN_PRESETS.includes(value) || value === PRONOUN_PREFER_NOT;
+  const [custom, setCustom] = useState(value !== "" && !presetMatch);
+
+  const Card = (label, active, onClick) => (
+    <button
+      type="button"
+      key={label}
+      className={`${styles.radioCard} ${active ? styles.radioActive : ""}`}
+      onClick={onClick}
+      aria-pressed={active}
+    >
+      <span className={styles.radioDot} aria-hidden="true" />
+      <span>{label}</span>
+    </button>
+  );
+
+  return (
+    <div className={styles.radioList}>
+      {PRONOUN_PRESETS.map((p) =>
+        Card(p, !custom && value === p, () => {
+          setCustom(false);
+          onChange(p);
+        }),
+      )}
+      {Card("Custom…", custom, () => {
+        setCustom(true);
+        onChange("");
+      })}
+      {custom ? (
+        <TextField
+          placeholder="Type your pronouns"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      ) : null}
+      {Card(PRONOUN_PREFER_NOT, !custom && value === PRONOUN_PREFER_NOT, () => {
+        setCustom(false);
+        onChange(PRONOUN_PREFER_NOT);
+      })}
+    </div>
+  );
+}
+
 const STEPS = [
   { title: "What's your name", fields: ["preferredName", "pronouns"] },
   { title: "Your journey", fields: ["careContext"] },
+  { title: "Your therapy", fields: ["hormoneMethod", "stage"] },
   { title: "What matters to you", fields: ["goals", "trackedSymptoms"] },
   { title: "Last details", fields: ["therapyStartDate", "language"] },
 ];
@@ -106,6 +160,8 @@ export default function OnboardingForm({
       preferredName: "",
       pronouns: "",
       careContext: undefined,
+      hormoneMethod: undefined,
+      stage: undefined,
       goals: [],
       trackedSymptoms: [],
       therapyStartDate: "",
@@ -139,17 +195,25 @@ export default function OnboardingForm({
     preferredName: (
       <div className={styles.block} key="name">
         <TextField
-          label="Name the companion will use"
+          label="Your name"
+          hint="(this is the name that your companion will use)"
           placeholder="e.g. Sam"
           error={errors.preferredName?.message}
           {...register("preferredName")}
         />
-        <TextField
-          label="Pronouns (optional)"
-          placeholder="e.g. she/her, he/him, they/them"
-          error={errors.pronouns?.message}
-          {...register("pronouns")}
-        />
+        <div>
+          <p className={styles.fieldLabel}>Pronouns</p>
+          <Controller
+            control={control}
+            name="pronouns"
+            render={({ field }) => (
+              <PronounSelect value={field.value} onChange={field.onChange} />
+            )}
+          />
+          {errors.pronouns ? (
+            <span className={styles.err}>{errors.pronouns.message}</span>
+          ) : null}
+        </div>
       </div>
     ),
     careContext: (
@@ -167,6 +231,44 @@ export default function OnboardingForm({
           )}
         />
         {errors.careContext ? (
+          <span className={styles.err}>Select an option</span>
+        ) : null}
+      </div>
+    ),
+    hormoneMethod: (
+      <div className={styles.block} key="method">
+        <p className={styles.fieldLabel}>How do you take it?</p>
+        <Controller
+          control={control}
+          name="hormoneMethod"
+          render={({ field }) => (
+            <RadioCards
+              options={METHOD_OPTIONS}
+              value={field.value}
+              onChange={field.onChange}
+            />
+          )}
+        />
+        {errors.hormoneMethod ? (
+          <span className={styles.err}>Select an option</span>
+        ) : null}
+      </div>
+    ),
+    stage: (
+      <div className={styles.block} key="stage">
+        <p className={styles.fieldLabel}>Where are you?</p>
+        <Controller
+          control={control}
+          name="stage"
+          render={({ field }) => (
+            <RadioCards
+              options={STAGE_OPTIONS}
+              value={field.value}
+              onChange={field.onChange}
+            />
+          )}
+        />
+        {errors.stage ? (
           <span className={styles.err}>Select an option</span>
         ) : null}
       </div>

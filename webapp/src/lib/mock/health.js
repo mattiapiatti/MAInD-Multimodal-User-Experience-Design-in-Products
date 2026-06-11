@@ -40,6 +40,20 @@ export function getFrequencyByMonth() {
   }));
 }
 
+/**
+ * How often each symptom was reported overall, for a distribution pie chart.
+ * Colors are RGB triples (0–1) so the PDF report can draw slices directly.
+ */
+export function getSymptomDistribution() {
+  return [
+    { label: "Hot flashes", value: 18, color: [0.055, 0.486, 0.4] },
+    { label: "Mood swings", value: 13, color: [0.2, 0.62, 0.52] },
+    { label: "Fatigue", value: 9, color: [0.45, 0.74, 0.66] },
+    { label: "Sleep changes", value: 6, color: [0.66, 0.83, 0.78] },
+    { label: "Headaches", value: 4, color: [0.83, 0.91, 0.88] },
+  ];
+}
+
 /** Headline numbers for the home + insights summary cards. */
 export function getSummary() {
   return {

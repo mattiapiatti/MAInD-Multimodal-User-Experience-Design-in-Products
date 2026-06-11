@@ -13,6 +13,22 @@
   gap: 3px;
 }
 
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.icon {
+  display: inline-flex;
+  color: var(--color-accent, #0e7c66);
+}
+
+.icon svg {
+  width: 20px;
+  height: 20px;
+}
+
 .title {
   font-size: 16px;
   font-weight: 700;

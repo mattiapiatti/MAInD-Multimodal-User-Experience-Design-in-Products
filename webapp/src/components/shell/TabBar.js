@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import styles from "./TabBar.module.css";
-import { HomeIcon, PulseIcon, DeviceIcon, SettingsIcon } from "./icons";
+import { HomeIcon, PulseIcon, SettingsIcon } from "./icons";
 
+// Device management lives inside Settings now, so it no longer has its own tab.
 const TABS = [
   { href: "/home", label: "Home", Icon: HomeIcon },
   { href: "/insights", label: "Insights", Icon: PulseIcon },
-  { href: "/device", label: "Device", Icon: DeviceIcon },
   { href: "/settings", label: "Settings", Icon: SettingsIcon },
 ];
 

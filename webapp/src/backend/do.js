@@ -151,6 +151,8 @@ export class BackendDO extends DurableObject {
       preferredName: values.preferredName ?? null,
       pronouns: values.pronouns || null,
       careContext: values.careContext ?? null,
+      hormoneMethod: values.hormoneMethod ?? null,
+      stage: values.stage ?? null,
       goals: values.goals ?? [],
       trackedSymptoms: values.trackedSymptoms ?? [],
       therapyStartDate: values.therapyStartDate || null,

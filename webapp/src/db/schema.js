@@ -105,11 +105,17 @@ export const onboardingProfiles = sqliteTable("onboarding_profiles", {
       "gender_affirming",
       "menopause",
       "contraception",
-      "pcos",
+      "pmos",
       "endometriosis",
       "other",
     ],
   }),
+  // How the hormone/medication is taken.
+  hormoneMethod: text("hormone_method", {
+    enum: ["gel", "injection", "pill", "patch", "nothing"],
+  }),
+  // Where the person is in their therapy.
+  stage: text("stage", { enum: ["starting", "few_months", "further"] }),
   // What the person wants to get out of it (multi-select stored as JSON array).
   goals: text("goals", { mode: "json" }),
   // Symptoms they want to track (JSON array of strings).

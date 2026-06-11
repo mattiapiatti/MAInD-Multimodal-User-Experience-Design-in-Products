@@ -1,26 +1,8 @@
-import { requireOnboardedUser } from "@/lib/auth/guard";
-import { listDevices } from "@/lib/data/devices";
-import Screen from "@/components/shell/Screen";
-import DeviceManager from "@/components/device/DeviceManager";
+import { redirect } from "next/navigation";
 
-export const metadata = { title: "Device" };
-
-export default async function DevicePage() {
-  const user = await requireOnboardedUser();
-  // Plain serializable objects for the client component.
-  const rows = await listDevices(user.id);
-  const devices = rows.map((d) => ({
-    id: d.id,
-    name: d.name,
-    status: d.status,
-    hardwareId: d.hardwareId,
-    pairedAt:
-      d.pairedAt instanceof Date ? d.pairedAt.toISOString() : d.pairedAt,
-  }));
-
-  return (
-    <Screen title="Device">
-      <DeviceManager devices={devices} />
-    </Screen>
-  );
+// Device management moved into Settings. Keep the route as a redirect so any
+// bookmarks or old links land in the right place. (The server actions in
+// ./actions.js are still used by DeviceManager, now rendered under Settings.)
+export default function DevicePage() {
+  redirect("/settings");
 }

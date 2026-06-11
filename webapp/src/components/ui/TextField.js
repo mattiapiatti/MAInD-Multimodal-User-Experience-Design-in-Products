@@ -17,6 +17,7 @@ const TextField = forwardRef(function TextField(
           {label}
         </label>
       ) : null}
+      {hint ? <span className={styles.hint}>{hint}</span> : null}
       <input
         id={fieldId}
         ref={ref}
@@ -29,8 +30,6 @@ const TextField = forwardRef(function TextField(
         <span id={`${fieldId}-error`} className={styles.error} role="alert">
           {error}
         </span>
-      ) : hint ? (
-        <span className={styles.hint}>{hint}</span>
       ) : null}
     </div>
   );
