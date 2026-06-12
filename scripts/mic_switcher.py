@@ -107,6 +107,12 @@ def main() -> None:
     p = argparse.ArgumentParser(description="Terminal voice switcher (Arduino stand-in)")
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--port", type=int, default=8765)
+    p.add_argument(
+        "--url",
+        default=None,
+        help="full voice WebSocket URL (overrides --host/--port), e.g. "
+        "ws://127.0.0.1:8080/v1/sessions/s_abc/voice",
+    )
     p.add_argument("--input-device", type=int, default=None, help="mic device index")
     p.add_argument("--output-device", type=int, default=None, help="speaker device index")
     p.add_argument("--list-devices", action="store_true", help="list audio devices and exit")
@@ -116,7 +122,7 @@ def main() -> None:
         list_devices()
         return
 
-    uri = f"ws://{args.host}:{args.port}"
+    uri = args.url or f"ws://{args.host}:{args.port}"
     print(f"connecting to {uri} …")
     # ping_interval=None: a turn can keep the brain's CPU busy longer than the
     # default keepalive timeout, which would otherwise drop the connection.
