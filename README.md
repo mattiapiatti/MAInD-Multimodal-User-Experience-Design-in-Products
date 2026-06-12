@@ -83,6 +83,30 @@ back into `memory/vault/`, and launches the terminal mic client. Per turn:
 > for mic access — grant it under *System Settings → Privacy & Security →
 > Microphone*. List devices with `python scripts/mic_switcher.py --list-devices`.
 
+## Run the headless client in Docker
+
+The client can also run as a small container — the **headless owner of the persona
+and memory**. It opens a session on the service, uploads persona + memory, and keeps
+`memory/vault/` in sync with what the service learns (bind-mounted, so the learned
+memory persists on the host). An external audio frontend (the Arduino) then connects
+to the session's voice URL.
+
+```bash
+make docker-up        # build + start the container (detached)
+make docker-logs      # follow logs — shows the session voice URL to point a frontend at
+make docker-down      # stop + remove
+```
+
+`docker-compose.yml` mounts the persona (read-only), the knowledge base (read-only),
+and the vault (read-write, the source of truth), and points
+`COMPANION_SERVICE_URL` at `host.docker.internal:8080`. Run the Voice Agent Service
+on the same host so the voice WebSocket stays local.
+
+> **Why headless:** the microphone frontend is *not* containerised — a Linux
+> container on macOS cannot reach the host microphone (CoreAudio). For the local mic
+> demo, use `make run` on the host. The container is for the persona+memory role with
+> an external audio device (e.g. the Arduino).
+
 ## Memory — adaptive Hebbian vault (owned here)
 
 The companion keeps a persistent long-term memory as an **Obsidian-style vault** of

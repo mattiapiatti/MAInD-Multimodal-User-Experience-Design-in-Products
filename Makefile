@@ -9,8 +9,13 @@
 CLIENT_VENV = $(HOME)/.companion-venv
 CLIENT_PY = $(CLIENT_VENV)/bin/python
 SERVICE_URL ?= http://127.0.0.1:8080
+COMPOSE ?= docker compose
+# BuildKit reads macOS AppleDouble (._*) xattrs before .dockerignore and chokes on
+# this volume; scrub them before any docker invocation.
+SCRUB = find . -name '._*' -type f -delete 2>/dev/null || true
 
-.PHONY: install run open wipe health devices clean
+.PHONY: install run open wipe health devices clean \
+        docker-build docker-up docker-down docker-logs
 
 # Build the venv only when missing; install the client + the mic frontend extras.
 $(CLIENT_PY):
@@ -38,3 +43,22 @@ devices: $(CLIENT_PY)   ## list host audio input/output devices
 
 clean:                  ## remove the host venv
 	rm -rf $(CLIENT_VENV)
+
+# --- headless client in Docker (owns persona + memory; no mic) ----------------
+# The container opens a session and keeps memory synced to ./memory/vault. The
+# audio frontend connects to the voice URL shown in `make docker-logs`. The local
+# mic frontend stays on the host (`make run`) — a container can't reach CoreAudio.
+
+docker-build:           ## build the headless client image
+	@$(SCRUB)
+	$(COMPOSE) build
+
+docker-up: docker-build ## start the headless client container (detached)
+	@$(SCRUB)
+	$(COMPOSE) up -d
+
+docker-down:            ## stop + remove the client container
+	$(COMPOSE) down
+
+docker-logs:            ## follow logs (shows the session voice URL)
+	$(COMPOSE) logs -f

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import signal
 import subprocess
 import sys
 import threading
@@ -60,13 +61,15 @@ def cmd_run(args: argparse.Namespace) -> int:
 
 
 def cmd_open(args: argparse.Namespace) -> int:
+    # Translate SIGTERM (e.g. `docker stop`) into the same clean shutdown as Ctrl-C.
+    signal.signal(signal.SIGTERM, lambda *_: (_ for _ in ()).throw(KeyboardInterrupt()))
     conn = Connector()
     info = conn.open(warmup=True)
     _, stop = _start_memory_sync(conn)
     print(f"session {conn.session_id} — model {'warm' if info.get('warm') else 'warming'}")
     print("Point your audio frontend at:")
     print(f"  {conn.voice_ws_url}")
-    print("\nMemory is syncing to the local vault. Press Ctrl-C to close the session.")
+    print("\nMemory is syncing to the local vault. Press Ctrl-C (or stop the container).")
     try:
         threading.Event().wait()  # block forever
     except KeyboardInterrupt:

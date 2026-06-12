@@ -1,0 +1,22 @@
+services:
+  companion:
+    build:
+      context: .
+    image: health-companion-client:latest
+    container_name: companion
+    environment:
+      # The external Voice Agent Service. OrbStack maps host.docker.internal to the
+      # Mac, where the service container publishes :8080.
+      COMPANION_SERVICE_URL: "http://host.docker.internal:8080"
+      COMPANION_PROFILE_TYPES: "therapy,preference"
+    volumes:
+      # The learned memory is the source of truth and lives on the host: bind-mount
+      # it so what the service learns is written back here and survives restarts.
+      - ./memory/vault:/app/memory/vault
+      # Reference knowledge (read-only) and the persona (read-only).
+      - ./memory/knowledge:/app/memory/knowledge:ro
+      - ./persona:/app/persona:ro
+    extra_hosts:
+      # Fallback for non-OrbStack Docker; OrbStack provides this without it.
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped

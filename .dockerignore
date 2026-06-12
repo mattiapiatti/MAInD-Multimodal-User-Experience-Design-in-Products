@@ -1,0 +1,15 @@
+.git
+.gitignore
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+.DS_Store
+._*
+.pytest_cache/
+.ruff_cache/
+# The webapp is a separate Cloudflare project, not part of the client image.
+webapp/
+# The vault is bind-mounted at runtime, not baked into the image.
+memory/vault/
