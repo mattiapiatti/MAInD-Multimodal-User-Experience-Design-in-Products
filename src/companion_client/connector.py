@@ -46,9 +46,17 @@ class Connector:
     def __init__(self, cfg: Settings | None = None) -> None:
         self._cfg = cfg or settings
         self._base = self._cfg.service_url.rstrip("/")
+        # Cloudflare Access service token, sent on every REST/SSE/WS call (empty for
+        # a local service with no edge auth). See config.Settings.auth_headers.
+        self._headers = self._cfg.auth_headers()
         self.session_id: str | None = None
         self.voice_ws_url: str | None = None
         self._memory_sse_path: str | None = None
+
+    @property
+    def auth_headers(self) -> dict[str, str]:
+        """Headers the audio frontend must also set on the voice WS handshake."""
+        return dict(self._headers)
 
     # -- bundle ------------------------------------------------------------- #
 
@@ -74,7 +82,10 @@ class Connector:
             "warmup": warmup,
         }
         r = httpx.post(
-            f"{self._base}/v1/sessions", json=body, timeout=self._cfg.request_timeout
+            f"{self._base}/v1/sessions",
+            json=body,
+            headers=self._headers,
+            timeout=self._cfg.request_timeout,
         )
         r.raise_for_status()
         info = r.json()
@@ -96,6 +107,7 @@ class Connector:
         try:
             r = httpx.delete(
                 f"{self._base}/v1/sessions/{self.session_id}",
+                headers=self._headers,
                 timeout=self._cfg.request_timeout,
             )
             r.raise_for_status()
@@ -112,7 +124,9 @@ class Connector:
         if not self.session_id:
             return
         httpx.post(
-            f"{self._base}/v1/sessions/{self.session_id}/wipe", timeout=self._cfg.request_timeout
+            f"{self._base}/v1/sessions/{self.session_id}/wipe",
+            headers=self._headers,
+            timeout=self._cfg.request_timeout,
         ).raise_for_status()
 
     # -- memory sync (SSE) -------------------------------------------------- #
@@ -128,7 +142,7 @@ class Connector:
         url = f"{self._base}{self._memory_sse_path}"
         log.info("memory sync: streaming from %s", url)
         try:
-            with httpx.stream("GET", url, timeout=None) as r:
+            with httpx.stream("GET", url, headers=self._headers, timeout=None) as r:
                 r.raise_for_status()
                 event = None
                 for line in r.iter_lines():

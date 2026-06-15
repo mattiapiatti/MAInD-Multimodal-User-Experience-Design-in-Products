@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import signal
 import subprocess
 import sys
@@ -50,8 +51,15 @@ def cmd_run(args: argparse.Namespace) -> int:
     print(f"voice  : {conn.voice_ws_url}")
     print("starting microphone frontend… (Ctrl-C to end)\n")
     mic = PROJECT_ROOT / "scripts" / "mic_switcher.py"
+    # The voice WS sits behind Cloudflare Access too: hand the mic frontend the
+    # service-token headers via the environment so it can set them on the handshake.
+    mic_env = {**os.environ, **{f"CF_HEADER_{k}": v for k, v in conn.auth_headers.items()}}
     try:
-        subprocess.run([sys.executable, str(mic), "--url", conn.voice_ws_url], check=False)
+        subprocess.run(
+            [sys.executable, str(mic), "--url", conn.voice_ws_url],
+            check=False,
+            env=mic_env,
+        )
     except KeyboardInterrupt:
         pass
     finally:
@@ -93,7 +101,11 @@ def cmd_wipe(args: argparse.Namespace) -> int:
 
 def cmd_health(args: argparse.Namespace) -> int:
     try:
-        r = httpx.get(f"{settings.service_url.rstrip('/')}/healthz", timeout=5.0)
+        r = httpx.get(
+            f"{settings.service_url.rstrip('/')}/healthz",
+            headers=settings.auth_headers(),
+            timeout=5.0,
+        )
         r.raise_for_status()
         print(r.json())
         return 0

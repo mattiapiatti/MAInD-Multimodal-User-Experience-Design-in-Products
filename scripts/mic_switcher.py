@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import queue
 import sys
 import threading
@@ -31,6 +32,21 @@ from websockets.exceptions import ConnectionClosed
 from websockets.sync.client import connect
 
 MIC_SAMPLE_RATE = 16000  # what the brain's STT expects; send 16 kHz mono int16
+
+
+def _ws_headers() -> dict[str, str]:
+    """Read Cloudflare Access headers passed in by the launcher (CF_HEADER_*).
+
+    The deployed Voice Agent Service sits behind Cloudflare Access, which checks the
+    service token on the WebSocket *upgrade request* — so they must be set on connect,
+    not after. ``companion run`` forwards them via the environment. Empty for a local
+    service, in which case the handshake carries no extra headers.
+    """
+    headers: dict[str, str] = {}
+    for env_key, value in os.environ.items():
+        if env_key.startswith("CF_HEADER_") and value:
+            headers[env_key[len("CF_HEADER_") :]] = value
+    return headers
 
 
 def list_devices() -> None:
@@ -123,10 +139,14 @@ def main() -> None:
         return
 
     uri = args.url or f"ws://{args.host}:{args.port}"
-    print(f"connecting to {uri} …")
+    headers = _ws_headers()
+    print(f"connecting to {uri} …{' (with Cloudflare Access token)' if headers else ''}")
     # ping_interval=None: a turn can keep the brain's CPU busy longer than the
     # default keepalive timeout, which would otherwise drop the connection.
-    with connect(uri, max_size=None, ping_interval=None) as ws:
+    # additional_headers carries the Cloudflare Access service token on the upgrade.
+    with connect(
+        uri, max_size=None, ping_interval=None, additional_headers=headers or None
+    ) as ws:
         ws.send(json.dumps({"event": "hello", "input_sample_rate": MIC_SAMPLE_RATE}))
         out_sr = 22050
         ready = json.loads(ws.recv())

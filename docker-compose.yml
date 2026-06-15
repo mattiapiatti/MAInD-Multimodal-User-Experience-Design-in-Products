@@ -4,10 +4,15 @@ services:
       context: .
     image: health-companion-client:latest
     container_name: companion
+    env_file:
+      # Holds VA_BASE_URL and the Cloudflare Access service token (VA_CF_ACCESS_*).
+      # Copy .env.example to .env and fill in the token; never commit .env.
+      - .env
     environment:
-      # The external Voice Agent Service. OrbStack maps host.docker.internal to the
-      # Mac, where the service container publishes :8080.
-      COMPANION_SERVICE_URL: "http://host.docker.internal:8080"
+      # v2 default: the deployed Voice Agent Service over HTTPS/WSS behind Cloudflare
+      # Access. Override in .env (e.g. http://host.docker.internal:8080 for a local
+      # engine — OrbStack maps host.docker.internal to the Mac).
+      VA_BASE_URL: "${VA_BASE_URL:-https://voice-agent-service.mattiapiatti.eu}"
       COMPANION_PROFILE_TYPES: "therapy,preference"
     volumes:
       # The learned memory is the source of truth and lives on the host: bind-mount

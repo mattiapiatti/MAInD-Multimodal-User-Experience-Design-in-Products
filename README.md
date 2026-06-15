@@ -1,10 +1,17 @@
 # Health Companion — client
 
-A **fully-local, voice-only** hormonal-health companion: a quiet voice in a small
-home device for tracking symptoms over time, understanding what the body is doing,
-and preparing for appointments.
+A voice-only hormonal-health companion: a quiet voice in a small home device for
+tracking symptoms over time, understanding what the body is doing, and preparing
+for appointments.
 
 Course: *Multimodal User Experience Design in Products* — SUPSI MAInD.
+
+> **v2 — connects to the deployed server.** This branch points the client at the
+> hosted **Voice Agent Service** (`https://voice-agent-service.mattiapiatti.eu`,
+> behind Cloudflare Access) over HTTPS/WSS instead of a local engine. The persona
+> and the personal memory still live **only** in this repo; only the compute moved
+> to the server. To run fully-local instead, set `VA_BASE_URL=http://127.0.0.1:8080`
+> and leave the access token empty (see [Configuration](#configuration)).
 
 This repository is the **companion's identity and memory**. It owns:
 
@@ -46,9 +53,14 @@ this project.
 
 ## Prerequisites
 
-- The **Voice Agent Service** running and reachable (default
-  `http://127.0.0.1:8080`). See its README; in short: `ollama pull gemma3n:e4b`,
-  fetch its models, `voice-agent`.
+- **v2 (this branch):** the **deployed Voice Agent Service** at
+  `https://voice-agent-service.mattiapiatti.eu`, reached over HTTPS/WSS and gated by
+  **Cloudflare Access**. You need a service token (`CF-Access-Client-Id` /
+  `CF-Access-Client-Secret`) from the deployment owner — set it in `.env`
+  (see [Configuration](#configuration)). No local model is required.
+  - To instead run against a **local engine**, point `VA_BASE_URL` at
+    `http://127.0.0.1:8080` and leave the token empty. See the service's README;
+    in short: `ollama pull gemma3n:e4b`, fetch its models, `voice-agent`.
 - Python 3.11+ on the host for this client and the mic frontend.
 
 ## Install
@@ -98,9 +110,11 @@ make docker-down      # stop + remove
 ```
 
 `docker-compose.yml` mounts the persona (read-only), the knowledge base (read-only),
-and the vault (read-write, the source of truth), and points
-`COMPANION_SERVICE_URL` at `host.docker.internal:8080`. Run the Voice Agent Service
-on the same host so the voice WebSocket stays local.
+and the vault (read-write, the source of truth). In v2 the container reads
+`VA_BASE_URL` and the `VA_CF_ACCESS_*` token from your `.env` and talks to the
+deployed service over the network — no co-located engine needed. (To run against a
+local engine instead, set `VA_BASE_URL=http://host.docker.internal:8080` and leave
+the token empty.)
 
 > **Why headless:** the microphone frontend is *not* containerised — a Linux
 > container on macOS cannot reach the host microphone (CoreAudio). For the local mic
@@ -138,16 +152,22 @@ Related: [[menopause-hrt]] [[sleep]]
 
 ## Configuration
 
-All settings are environment variables (see [.env.example](.env.example)); the
-defaults assume the service is on `localhost`.
+All settings are environment variables (see [.env.example](.env.example)); the v2
+defaults target the deployed service.
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `COMPANION_SERVICE_URL` | `http://127.0.0.1:8080` | the Voice Agent Service |
+| `VA_BASE_URL` | `https://voice-agent-service.mattiapiatti.eu` | the Voice Agent Service (use `http://127.0.0.1:8080` for a local engine) |
+| `VA_CF_ACCESS_CLIENT_ID` | — | Cloudflare Access service-token id (required by the deployed server) |
+| `VA_CF_ACCESS_CLIENT_SECRET` | — | Cloudflare Access service-token secret (keep out of git) |
 | `COMPANION_PROFILE_TYPES` | `therapy,preference` | note types always surfaced as context |
 | `COMPANION_PERSONA_PATH` | `./persona/system_prompt.txt` | the persona |
 | `COMPANION_VAULT_DIR` | `./memory/vault` | the learned memory |
 | `COMPANION_KNOWLEDGE_DIR` | `./memory/knowledge` | reference notes |
+
+> The access token is sent on **every** REST, SSE, and WebSocket call (including the
+> voice WS upgrade). `COMPANION_SERVICE_URL` is still accepted as an alias for
+> `VA_BASE_URL` for backward compatibility with v1.
 
 ## License
 
