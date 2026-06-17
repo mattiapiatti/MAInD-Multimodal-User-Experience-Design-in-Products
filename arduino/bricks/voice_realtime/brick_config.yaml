@@ -1,0 +1,21 @@
+id: voice_realtime
+name: Voice Realtime
+description: Wake-word voice pipeline streaming to the project's Voice Agent Service.
+config_variables:
+  - name: VA_VOICE_WS_URL
+    description: Session voice WebSocket URL from `companion open` (ws:// or wss://)
+    required: false
+  - name: VA_OUTPUT_RATE
+    description: Reply audio sample rate in Hz (Kokoro TTS default is 24000)
+    required: false
+    default: "24000"
+  - name: VA_CF_ACCESS_CLIENT_ID
+    description: Cloudflare Access service-token client id (same value as the companion .env)
+    required: false
+  - name: VA_CF_ACCESS_CLIENT_SECRET
+    description: Cloudflare Access service-token client secret (same value as the companion .env)
+    required: false
+  - name: PIPELINE_SLEEP_TIMEOUT
+    description: Idle seconds before returning to wake-word standby
+    required: false
+    default: "45"

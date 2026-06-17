@@ -1,0 +1,7 @@
+python-dotenv>=1.0
+msgpack>=1.0               # MCU RPC over /var/run/arduino-router.sock
+websockets>=13            # Voice Agent Service (async WS client)
+sherpa-onnx>=1.10          # offline keyword-spotting wake word (aarch64 wheel)
+sentencepiece>=0.2         # encode the wake phrase to the model's BPE tokens
+numpy>=1.24
+edge_impulse_linux>=1.0   # run the custom EI .eim wake model

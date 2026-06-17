@@ -1,0 +1,7 @@
+name: health-companion
+description: Hormonal health companion — wake-word ("hey kay") voice device on the project's own Voice Agent Service, with a NeoPixel 24 ring on pin 6 for visual feedback.
+ports:
+- 7000
+bricks:
+- voice_realtime: {}
+icon: 🎙️

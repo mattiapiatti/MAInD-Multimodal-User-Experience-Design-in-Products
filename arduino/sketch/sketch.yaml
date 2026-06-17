@@ -1,0 +1,10 @@
+profiles:
+  default:
+    fqbn: 
+    platforms:
+      - platform: arduino:zephyr
+    libraries:
+      - dependency: Arduino_RPClite (0.3.0)
+      - ArduinoGraphics (1.1.4)
+
+default_profile: default

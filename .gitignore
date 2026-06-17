@@ -17,3 +17,7 @@ memory/*
 # Claude
 .claude/
 /claude/
+
+# bundled KWS model (large, deploy artifact)
+arduino/models/
+arduino/dataset/
