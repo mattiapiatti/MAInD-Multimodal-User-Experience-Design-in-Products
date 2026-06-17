@@ -65,7 +65,9 @@ class AudioCapture:
         logger = Logger("audio")
         logger.info(f"Capture: {self.device} @ {self.cap_rate}->{self.sample_rate}Hz")
         # The wake-word spotter may still be releasing the shared ALSA device.
-        attempts = 25  # ~5s at 0.2s each
+        # Poll tightly (50 ms) so we grab the mic the instant it frees up — at
+        # 0.2s steps the first reopen alone could cost ~200 ms of dead air.
+        attempts = 100  # ~5s at 0.05s each
         for attempt in range(attempts):
             self._proc = await asyncio.create_subprocess_exec(
                 "arecord", "-D", self.device,
@@ -73,7 +75,7 @@ class AudioCapture:
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.DEVNULL,
             )
-            await asyncio.sleep(0.2)
+            await asyncio.sleep(0.05)
             if self._proc.returncode is None:
                 return
             if attempt == 0:

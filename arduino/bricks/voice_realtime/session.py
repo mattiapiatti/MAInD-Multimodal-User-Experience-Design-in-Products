@@ -56,20 +56,35 @@ class VoiceSession:
         self._out_sr = output_rate
         self._idle_timeout = idle_timeout
         self._vad = VoiceActivityDetector(
-            VADConfig(silence_ms=silence_ms, min_speech_ms=300, max_speech_ms=15000, chunk_ms=40)
+            VADConfig(
+                threshold=int(os.getenv("VAD_THRESHOLD", "500")),  # absolute RMS floor
+                silence_ms=silence_ms,
+                min_speech_ms=300,
+                max_speech_ms=15000,
+                chunk_ms=40,
+            )
         )
+        # Adaptive end-of-turn: the onset threshold is the measured room noise floor
+        # + VAD_DELTA. A fixed RMS threshold never works here — the native-48k capture
+        # is loud and the ambient level varies per room, so a too-low floor means
+        # silence is never seen and recording runs to max_speech.
+        self._vad_delta = int(os.getenv("VAD_DELTA", "700"))
+        self._vad_calib_chunks = int(os.getenv("VAD_CALIB_CHUNKS", "6"))  # ~240 ms of ambient
+        self._vad_debug = os.getenv("VAD_DEBUG", "0") != "0"
         self._beeps = os.getenv("BEEP", "1") != "0"
         self._spk = find_usb_playback_device()
 
     # -- one conversation (N turns) ----------------------------------------- #
 
     async def run_conversation(self) -> None:
-        _unmute(self._spk)  # so the beep + reply are audible
-        # Beep + open the mic IMMEDIATELY, and connect to the server IN PARALLEL —
-        # so the feedback tone fires the instant the wake word is detected, not
-        # after the (1–2 s) WebSocket connect. The utterance takes a few seconds,
-        # by which time the connection is ready.
+        logger.info("Activating — opening mic.")
+        # Kick the WebSocket connect off FIRST (before the blocking amixer unmute)
+        # so it overlaps everything else; the utterance takes a few seconds, by
+        # which time the connection + server-side STT warmup are ready.
         connect_task = asyncio.create_task(self._connect())
+        _unmute(self._spk)  # so the beep + reply are audible
+        # Beep + open the mic IMMEDIATELY so the feedback tone fires the instant the
+        # wake word is accepted, not after the WebSocket connect.
         pcm = await self._record_utterance()
         ws = await connect_task
         if ws is None:
@@ -133,6 +148,13 @@ class VoiceSession:
         need_silence = self._vad.silence_chunks()
         need_speech = self._vad.min_speech_chunks()
         max_speech = self._vad.max_speech_chunks()
+
+        # Calibrate the ambient noise floor from the first few (silent) chunks,
+        # then anything below floor + delta counts as silence. Seeded with the
+        # static floor so a quiet room still has a sane minimum.
+        floor = float(self._vad.cfg.threshold)
+        noise = floor
+        calib_left = self._vad_calib_chunks
         try:
             while True:
                 chunk = await mic.read_chunk(timeout=0.5)
@@ -142,7 +164,16 @@ class VoiceSession:
                         if waited >= self._idle_timeout:
                             break
                     continue
-                if self._vad.is_speech(chunk):
+                rms = self._vad.rms(chunk)
+                if not started and calib_left > 0:
+                    # take the quietest reading as the floor (ignores an early blip)
+                    noise = float(rms) if calib_left == self._vad_calib_chunks else min(noise, rms)
+                    calib_left -= 1
+                thresh = max(floor, noise + self._vad_delta)
+                is_speech = rms > thresh
+                if self._vad_debug:
+                    logger.info(f"vad rms={rms} noise={noise:.0f} thr={thresh:.0f} {'SPEAK' if is_speech else 'sil'}")
+                if is_speech:
                     if not started:
                         _light(LIGHT_USER_TALKING)
                     started = True

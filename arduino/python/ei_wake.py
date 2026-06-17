@@ -93,7 +93,7 @@ class EiWakeWord:
         self._stop.set()
         self._kill_arecord()
         if self._thread:
-            self._thread.join(timeout=2.0)
+            self._thread.join(timeout=1.0)
             self._thread = None
 
     # -- internals ---------------------------------------------------------- #
@@ -116,11 +116,11 @@ class EiWakeWord:
         cmd = ["arecord", "-q", "-f", "S16_LE", "-r", str(self._cap_sr), "-c", "1", "-t", "raw"]
         if self._mic_device:
             cmd[1:1] = ["-D", self._mic_device]
-        for attempt in range(25):  # ~5s — the conversation may still be releasing the mic
+        for attempt in range(100):  # ~5s — the conversation may still be releasing the mic
             if self._stop.is_set():
                 return None
             proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-            time.sleep(0.2)
+            time.sleep(0.05)
             if proc.poll() is None:
                 return proc
             if attempt == 0:

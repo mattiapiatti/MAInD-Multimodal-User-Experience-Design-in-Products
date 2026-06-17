@@ -52,11 +52,14 @@ def _notify(method: str, params: list):
 
 
 def set_wake_word_state(active: bool):
-    _call("set_wake_word_state", [active])
+    # Fire-and-forget: this only drives the ring LED, and the reply was discarded
+    # anyway. A blocking _call (5s timeout) here stalled the whole activation path
+    # waiting on the MCU — keep it off the hot path so the mic opens instantly.
+    _notify("set_wake_word_state", [active])
 
 
 def set_voice_state(active: bool):
-    _call("set_voice_state", [active])
+    _notify("set_voice_state", [active])
 
 
 def set_audio_level(level: int):

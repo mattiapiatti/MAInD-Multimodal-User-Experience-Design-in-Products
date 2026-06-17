@@ -89,7 +89,12 @@ class VoiceRealtime:
                 logger.info("Sleeping — waiting for the wake word.")
                 await asyncio.get_event_loop().run_in_executor(None, self._wake_event.wait)
                 self._wake_event.clear()
-            await session.run_conversation()
+            try:
+                await session.run_conversation()
+            except Exception as exc:  # noqa: BLE001
+                # A busy mic / dropped connection must return us to standby,
+                # never kill the loop (the device would go deaf until reboot).
+                logger.error(f"conversation error: {exc}")
             if self._wake_event is None:
                 break
             if self._on_sleep:

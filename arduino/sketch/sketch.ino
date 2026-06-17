@@ -8,27 +8,51 @@
 
 Adafruit_NeoPixel strip(NEO_COUNT, NEO_PIN, NEO_GRB + NEO_KHZ800);
 
-// Light states
-#define NEO_IDLE         0   // slow breathe, waiting for wake word
-#define NEO_WAKE         1   // fade-in neutral, settling to floor
-#define NEO_SPEAK        2   // yellow — companion talking
-#define NEO_LISTEN       3   // green  — waiting for user
-#define NEO_CONFIRM      4   // single brightness pulse
-#define NEO_USER_TALKING 5   // red    — user speaking
-#define NEO_THINKING     6   // purple — AI processing
+// ---- States (github.com/g10rg10/state-hormones — Maind X spec) ---------------
+// The eyes/faces will live on a SEPARATE ESP32 over UART. Here the NeoPixel ring
+// is only the EXTERNAL light halo (Maind X §0): every state maps to a light
+// "mode" = a brightness LEVEL + a warm↔cool TINT, with its own envelope.
+enum {
+  S_A1_OFF = 0, S_A2_WAKE, S_A3_IDLE, S_A4_CLOCK,
+  S_B1_SPEAKING, S_B2_LISTENING, S_B3_THINKING,
+  S_C1_CONFIRM, S_C2_DIDNT_CATCH, S_D1_REMINDER, S_D2_WAKEWORD,
+  S_E2_QUIRK, S_E4_WINK
+};
 
-// Base colors per state at full brightness
-static const float NEO_CR[] = {200, 220, 220,   0, 255, 200, 140};
-static const float NEO_CG[] = {165, 200, 175, 200, 240,   0,   0};
-static const float NEO_CB[] = {130, 175,   0,   0, 190,   0, 220};
-//                          IDLE  WAKE  SPK  LST  CNF  TLK  THK
+// Light modes (Maind X §0 · Light states)
+enum { L_OFF = 0, L_IDLE, L_SPEAK, L_LISTEN, L_WAKE };
 
-int   neoState      = NEO_IDLE;
-float neoBri        = 0.20f;
-float neoBlendR     = 200, neoBlendG = 165, neoBlendB = 130;
-float breathPhase   = 0.0f;
-float confirmBri    = 0.0f;
-int   confirmReturn = NEO_LISTEN;
+static int lightModeForState(int s) {
+  switch (s) {
+    case S_A1_OFF:
+    case S_A4_CLOCK:        return L_OFF;
+    case S_A2_WAKE:         return L_WAKE;
+    case S_B1_SPEAKING:                          // speech-envelope pulse
+    case S_C2_DIDNT_CATCH:                       // pulse, then cools toward listen
+    case S_D1_REMINDER:    return L_SPEAK;       // pulses with envelope
+    case S_B2_LISTENING:
+    case S_D2_WAKEWORD:    return L_LISTEN;      // brighter floor + cooler tint
+    // S_C1_CONFIRM is a one-shot pulse OVERLAY (see setLightState), not a mode.
+    case S_A3_IDLE:
+    case S_B3_THINKING:
+    case S_E2_QUIRK:
+    case S_E4_WINK:
+    default:               return L_IDLE;        // slow breathe at a low floor
+  }
+}
+
+// Warm/cool tint anchors for the halo (lerped by `coolMix` 0..1).
+static const float WARM_R = 255, WARM_G = 168, WARM_B = 82;
+static const float COOL_R = 96,  COOL_G = 196, COOL_B = 255;
+
+int   curState   = S_A3_IDLE;
+int   lightMode  = L_IDLE;
+float lvl        = 0.0f;   // smoothed brightness 0..1
+float coolMix    = 0.20f;  // smoothed tint 0..1 (0 warm, 1 cool)
+float breathePh  = 0.0f;   // idle-breath phase
+float spkEnv     = 0.0f;   // audio envelope (fast attack / slow release)
+float confirmBri = 0.0f;   // one-shot confirm-pulse overlay
+float wakeRamp   = 1.0f;   // 0..1 progress of the wake fade-in
 unsigned long lastNeoMs = 0;
 
 bool wakeWordActive = false;

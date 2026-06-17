@@ -40,12 +40,19 @@ WAKE_WORD_POST_SILENCE_SEC = float(os.getenv("WAKE_WORD_POST_SILENCE_SEC", "0.0"
 # ignore detections right after (re)starting the listener (avoids warmup false-fires)
 WAKE_WORD_WARMUP_SEC = float(os.getenv("WAKE_WORD_WARMUP_SEC", "0.8"))
 
+# Ring LED states — must match sketch/sketch.ino and session.py.
+LIGHT_WAKE, LIGHT_CONFIRM = 1, 4
+
 _wake_event = threading.Event()
 _spotter: SherpaWakeWord | None = None
 _spotter_started = False
 _wake_enabled = False
 _wake_pending = False
 _wake_started_at = 0.0
+# Single source of truth: a conversation owns the mic. While it's True the wake
+# listener must NOT run (two arecords on the shared device => "busy" => crash).
+_state_lock = threading.Lock()
+_session_active = False
 
 
 def _ensure_audio_tools():
@@ -108,12 +115,16 @@ def _create_spotter():
 
 def _start_wake_word():
     global _spotter, _spotter_started, _wake_enabled, _wake_started_at
-    if _spotter is None:
-        _spotter = _create_spotter()
-    _spotter.start()
-    _spotter_started = True
-    _wake_enabled = True
-    _wake_started_at = time.monotonic()
+    with _state_lock:
+        if _session_active:
+            # A conversation owns the mic; never open a second arecord on it.
+            return
+        if _spotter is None:
+            _spotter = _create_spotter()
+        _spotter.start()
+        _spotter_started = True
+        _wake_enabled = True
+        _wake_started_at = time.monotonic()
     mcu.set_wake_word_state(True)
     logger.info(f"Sleeping. Say '{WAKE_WORD_PHRASE}' to start.")
 
@@ -132,7 +143,12 @@ def _stop_wake_word():
 def _release_wake_mic():
     """Free the mic so the conversation's capture can grab it."""
     mcu.set_wake_word_state(False)
-    mcu.set_light_state(1)  # WAKE
+    # Set WAKE as the settle target, then fire a CONFIRM pulse on top: the ring
+    # gives a bright "heard you" flash that fades back into the WAKE colour. The
+    # session then takes over with LISTEN once the mic is open (~0.4s), which is
+    # long enough for the pulse to be seen.
+    mcu.set_light_state(LIGHT_WAKE)
+    mcu.set_light_state(LIGHT_CONFIRM)
     try:
         _stop_wake_word()  # no sleep: the conversation's AudioCapture retries if busy
     except Exception as exc:
@@ -147,11 +163,13 @@ def _restart_wake_word():
 
 
 def _wake_after_post_silence():
-    global _wake_pending
-    if not _wake_enabled:
+    global _wake_pending, _session_active
+    with _state_lock:
+        if not _wake_enabled or _session_active:
+            _wake_pending = False
+            return
         _wake_pending = False
-        return
-    _wake_pending = False
+        _session_active = True  # claim the mic before anything else can
     logger.info("Wake word accepted. Starting voice session.")
     _release_wake_mic()
     _wake_event.set()
@@ -159,17 +177,21 @@ def _wake_after_post_silence():
 
 def _on_wake_word():
     global _wake_pending
-    if not _wake_enabled or _wake_pending:
-        return
-    if time.monotonic() - _wake_started_at < WAKE_WORD_WARMUP_SEC:
-        return
-    _wake_pending = True
+    with _state_lock:
+        if _session_active or not _wake_enabled or _wake_pending:
+            return
+        if time.monotonic() - _wake_started_at < WAKE_WORD_WARMUP_SEC:
+            return
+        _wake_pending = True
     logger.info(f"Wake word detected. Waiting {WAKE_WORD_POST_SILENCE_SEC:.1f}s.")
     threading.Timer(WAKE_WORD_POST_SILENCE_SEC, _wake_after_post_silence).start()
 
 
 def _on_pipeline_sleep():
+    global _session_active
     logger.info("Voice session ended. Returning to wake-word standby.")
+    with _state_lock:
+        _session_active = False  # release the mic; the listener may run again
     # App._stop()-style teardown is blocking; restart the listener off the loop thread.
     threading.Thread(target=_restart_wake_word, daemon=True).start()
 
