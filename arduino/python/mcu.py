@@ -1,12 +1,25 @@
-"""Small MCU RPC helper for LED matrix state and RGB LEDs."""
+"""Small MCU RPC helper for LED matrix state and RGB LEDs.
+
+The router reaches the MCU over a 115200-baud serial link, and the NeoPixel
+``strip.show()`` disables interrupts for ~0.7 ms per frame. Flooding the bridge
+(e.g. an audio level per chunk) makes the MCU drop serial bytes during show(),
+desyncing the msgpack stream so the LEDs freeze. Keep high-frequency calls
+throttled — see ``set_audio_level``.
+"""
 
 import socket
 import threading
+import time
 
 import msgpack
 
 ROUTER_SOCK = "/var/run/arduino-router.sock"
 _lock = threading.Lock()
+
+# Rate-limit state for the high-frequency audio-level updates (matrix only).
+_LEVEL_MIN_INTERVAL = 0.12  # ~8 Hz
+_last_level_ts = 0.0
+_last_level_val = -1
 
 
 def _request(method: str, params: list):
@@ -51,18 +64,38 @@ def _notify(method: str, params: list):
         pass
 
 
+def _notify_x2(method: str, params: list):
+    # Send a low-frequency state RPC twice with a tiny gap. show() masks IRQs and
+    # can drop a byte of one frame; a second copy lands when the line is clear.
+    # (This only rescues a single dropped/desynced frame — it cannot un-stall an
+    # already buffer-locked decoder; the firmware change is what avoids that.)
+    _notify(method, params)
+    time.sleep(0.01)
+    _notify(method, params)
+
+
 def set_wake_word_state(active: bool):
     # Fire-and-forget: this only drives the ring LED, and the reply was discarded
     # anyway. A blocking _call (5s timeout) here stalled the whole activation path
     # waiting on the MCU — keep it off the hot path so the mic opens instantly.
-    _notify("set_wake_word_state", [active])
+    _notify_x2("set_wake_word_state", [active])
 
 
 def set_voice_state(active: bool):
-    _notify("set_voice_state", [active])
+    _notify_x2("set_voice_state", [active])
 
 
 def set_audio_level(level: int):
+    # Matrix-only now (the ring no longer reacts to audio). Throttle hard (~8 Hz,
+    # skip tiny changes) so this stream stays a negligible fraction of the serial
+    # bridge — the ring's show() bursts must not overlap a flood of these frames.
+    # level=0 always passes so the matrix settles promptly when audio stops.
+    global _last_level_ts, _last_level_val
+    now = time.monotonic()
+    if level != 0 and now - _last_level_ts < _LEVEL_MIN_INTERVAL and abs(level - _last_level_val) < 12:
+        return
+    _last_level_ts = now
+    _last_level_val = level
     _notify("set_audio_level", [level])
 
 
@@ -72,4 +105,4 @@ def set_led_color(led_id: int, r: int, g: int, b: int) -> bool:
 
 
 def set_light_state(state: int):
-    _notify("set_light_state", [state])
+    _notify_x2("set_light_state", [state])

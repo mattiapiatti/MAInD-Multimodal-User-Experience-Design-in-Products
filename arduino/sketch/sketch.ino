@@ -19,22 +19,25 @@ enum {
   S_E2_QUIRK, S_E4_WINK
 };
 
-// Light modes (Maind X §0 · Light states)
-enum { L_OFF = 0, L_IDLE, L_SPEAK, L_LISTEN, L_WAKE };
+// Light modes (Maind X §0 · Light states). Active-conversation modes render as a
+// FLAT colour (no per-frame animation) so strip.show() — which masks IRQs ~0.7ms
+// and drops serial RPC bytes — runs only on a state change, never on a timer while
+// audio/state traffic is on the wire. Only IDLE/WAKE animate (no traffic then).
+enum { L_OFF = 0, L_IDLE, L_SPEAK, L_LISTEN, L_THINK, L_WAKE };
 
 static int lightModeForState(int s) {
   switch (s) {
     case S_A1_OFF:
     case S_A4_CLOCK:        return L_OFF;
-    case S_A2_WAKE:         return L_WAKE;
-    case S_B1_SPEAKING:                          // speech-envelope pulse
-    case S_C2_DIDNT_CATCH:                       // pulse, then cools toward listen
-    case S_D1_REMINDER:    return L_SPEAK;       // pulses with envelope
+    case S_A2_WAKE:         return L_WAKE;       // fade-in (boot only)
+    case S_B1_SPEAKING:
+    case S_C1_CONFIRM:                           // brief ack → speak colour
+    case S_C2_DIDNT_CATCH:
+    case S_D1_REMINDER:    return L_SPEAK;       // flat warm
     case S_B2_LISTENING:
-    case S_D2_WAKEWORD:    return L_LISTEN;      // brighter floor + cooler tint
-    // S_C1_CONFIRM is a one-shot pulse OVERLAY (see setLightState), not a mode.
+    case S_D2_WAKEWORD:    return L_LISTEN;      // flat cool "your turn"
+    case S_B3_THINKING:    return L_THINK;       // flat dim
     case S_A3_IDLE:
-    case S_B3_THINKING:
     case S_E2_QUIRK:
     case S_E4_WINK:
     default:               return L_IDLE;        // slow breathe at a low floor
@@ -50,10 +53,9 @@ int   lightMode  = L_IDLE;
 float lvl        = 0.0f;   // smoothed brightness 0..1
 float coolMix    = 0.20f;  // smoothed tint 0..1 (0 warm, 1 cool)
 float breathePh  = 0.0f;   // idle-breath phase
-float spkEnv     = 0.0f;   // audio envelope (fast attack / slow release)
-float confirmBri = 0.0f;   // one-shot confirm-pulse overlay
 float wakeRamp   = 1.0f;   // 0..1 progress of the wake fade-in
-unsigned long lastNeoMs = 0;
+unsigned long lastNeoMs       = 0;  // dt anchor for renderNeopixel
+unsigned long lastNeoRenderMs = 0;  // ring render cadence (separate from dt)
 
 bool wakeWordActive = false;
 bool voiceActive    = false;
@@ -76,60 +78,61 @@ int led4_r = 0, led4_g = 0, led4_b = 0;
 // ---- NeoPixel RPC + render ------------------------------------------------
 
 void setLightState(int state) {
-  if (state == NEO_CONFIRM) {
-    confirmBri    = 1.0f;
-    confirmReturn = (neoState != NEO_CONFIRM) ? neoState : confirmReturn;
-    neoState      = NEO_CONFIRM;
-    return;
-  }
-  neoState = state;
+  if (state == curState) return;
+  curState  = state;
+  int m = lightModeForState(state);
+  if (m == L_WAKE) wakeRamp = 0.0f;   // (re)start the fade-in from black
+  lightMode = m;
 }
 
 void renderNeopixel() {
   unsigned long now = millis();
-  float dt = constrain((float)(now - lastNeoMs) / 1000.0f, 0.001f, 0.1f);
+  float dt = constrain((float)(now - lastNeoMs) / 1000.0f, 0.001f, 0.2f);
   lastNeoMs = now;
 
-  float tR, tG, tB;
+  breathePh += dt * (TWO_PI / 4.6f);             // idle breath ~4.6 s
+  float breathe = 0.5f + 0.5f * sinf(breathePh); // 0..1
 
-  if (neoState == NEO_CONFIRM) {
-    tR = NEO_CR[NEO_CONFIRM]; tG = NEO_CG[NEO_CONFIRM]; tB = NEO_CB[NEO_CONFIRM];
-    confirmBri = max(0.0f, confirmBri - dt * 2.5f);
-    neoBri     = 0.55f + 0.45f * confirmBri;
-    if (confirmBri <= 0.0f) neoState = confirmReturn;
-  } else {
-    tR = NEO_CR[neoState]; tG = NEO_CG[neoState]; tB = NEO_CB[neoState];
-    switch (neoState) {
-      case NEO_IDLE:
-        breathPhase += dt * (TWO_PI / 4.5f);
-        neoBri = 0.18f + 0.12f * (0.5f + 0.5f * sinf(breathPhase));
-        break;
-      case NEO_WAKE:
-        neoBri += (0.55f - neoBri) * constrain(dt * 4.0f, 0.0f, 1.0f);
-        break;
-      case NEO_SPEAK:
-      case NEO_LISTEN:
-      case NEO_USER_TALKING:
-      case NEO_THINKING:
-        neoBri = 0.80f;
-        break;
-    }
+  // Per-mode target brightness (tLvl) + tint (tCool). Active modes are FLAT.
+  float tLvl, tCool;
+  bool animate = false;   // only IDLE/WAKE animate (they carry no serial traffic)
+  switch (lightMode) {
+    case L_OFF:    tLvl = 0.0f;  tCool = coolMix; break;
+    case L_SPEAK:  tLvl = 0.80f; tCool = 0.06f;   break;  // flat warm
+    case L_LISTEN: tLvl = 0.78f; tCool = 0.95f;   break;  // flat cool
+    case L_THINK:  tLvl = 0.34f; tCool = 0.62f;   break;  // flat dim
+    case L_WAKE:                                          // fade-in from black to idle
+      wakeRamp += constrain(dt / 0.7f, 0.0f, 1.0f);
+      tLvl = wakeRamp * (0.16f + 0.10f * breathe);  tCool = 0.20f;
+      animate = true;
+      if (wakeRamp >= 1.0f) { lightMode = L_IDLE; curState = S_A3_IDLE; }
+      break;
+    case L_IDLE:
+    default:       tLvl = 0.16f + 0.10f * breathe; tCool = 0.20f; animate = true; break;
   }
 
-  neoBri = constrain(neoBri, 0.0f, 1.0f);
+  // Ease only while animating (idle breathe / wake fade — no traffic then). SNAP
+  // active-conversation colours so each transition is a single strip.show().
+  if (animate) {
+    lvl     += (tLvl  - lvl)     * constrain(dt * 6.0f, 0.0f, 1.0f);
+    coolMix += (tCool - coolMix) * constrain(dt * 3.0f, 0.0f, 1.0f);
+  } else {
+    lvl = tLvl; coolMix = tCool;
+  }
 
-  // Smooth color blend toward target (~200ms)
-  float cb   = constrain(dt * 5.0f, 0.0f, 1.0f);
-  neoBlendR += (tR - neoBlendR) * cb;
-  neoBlendG += (tG - neoBlendG) * cb;
-  neoBlendB += (tB - neoBlendB) * cb;
+  uint8_t r = (uint8_t)constrain((WARM_R + (COOL_R - WARM_R) * coolMix) * lvl, 0.0f, 255.0f);
+  uint8_t g = (uint8_t)constrain((WARM_G + (COOL_G - WARM_G) * coolMix) * lvl, 0.0f, 255.0f);
+  uint8_t b = (uint8_t)constrain((WARM_B + (COOL_B - WARM_B) * coolMix) * lvl, 0.0f, 255.0f);
 
-  uint8_t r = (uint8_t)(neoBlendR * neoBri);
-  uint8_t g = (uint8_t)(neoBlendG * neoBri);
-  uint8_t b = (uint8_t)(neoBlendB * neoBri);
-  for (int i = 0; i < NEO_COUNT; i++)
-    strip.setPixelColor(i, strip.Color(r, g, b));
-  strip.show();
+  // Push to the LEDs ONLY when the colour changed. During active states the colour
+  // is static after the snap, so show() (IRQs off ~0.7ms) runs ~once per transition
+  // and essentially never overlaps an in-flight serial RPC → no dropped bytes.
+  static uint8_t lastR = 1, lastG = 1, lastB = 1;
+  if (r != lastR || g != lastG || b != lastB) {
+    for (int i = 0; i < NEO_COUNT; i++) strip.setPixelColor(i, strip.Color(r, g, b));
+    strip.show();
+    lastR = r; lastG = g; lastB = b;
+  }
 }
 
 // ---- RPC handlers ----------------------------------------------------------
@@ -301,11 +304,17 @@ void loop() {
   float phaseSpeed = 0.015 + (smoothLevel / 100.0) * 0.18;
   phase += phaseSpeed;
 
-  // Render at ~25 FPS
+  // Matrix at ~25 FPS (its draw() is ISR/timer-backed — it does NOT mask IRQs).
   if (now - lastMatrixUpdate >= 40) {
     renderMatrix();
-    renderNeopixel();
     lastMatrixUpdate = now;
+  }
+
+  // Ring at ~16 FPS, on its OWN cadence: renderNeopixel only calls strip.show()
+  // (IRQs off) when the colour changed, so this is cheap and rarely masks IRQs.
+  if (now - lastNeoRenderMs >= 60) {
+    renderNeopixel();
+    lastNeoRenderMs = now;
   }
 
   delay(5);

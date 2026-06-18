@@ -18,6 +18,7 @@ import math
 import os
 import struct
 import subprocess
+from collections import deque
 
 from arduino.app_utils import Logger
 
@@ -31,9 +32,13 @@ try:
 except ImportError:  # running off-device
     _mcu = None
 
-# Ring/matrix light states — must match sketch/sketch.ino.
-LIGHT_IDLE, LIGHT_WAKE, LIGHT_SPEAK, LIGHT_LISTEN = 0, 1, 2, 3
-LIGHT_USER_TALKING, LIGHT_THINKING = 5, 6
+# States — github.com/g10rg10/state-hormones (Maind X spec). Must match the enum
+# in sketch/sketch.ino. Faces go on a separate ESP32 over UART; on the Uno Q
+# these drive the light halo (the ring) only.
+S_OFF, S_WAKE, S_IDLE, S_CLOCK = 0, 1, 2, 3
+S_SPEAKING, S_LISTENING, S_THINKING = 4, 5, 6
+S_CONFIRM, S_DIDNT_CATCH, S_REMINDER, S_WAKEWORD = 7, 8, 9, 10
+S_QUIRK, S_WINK = 11, 12
 
 BEEP_SR = 24000
 BEEP_START_HZ = 988  # higher tone = "recording started, speak now"
@@ -71,6 +76,11 @@ class VoiceSession:
         self._vad_delta = int(os.getenv("VAD_DELTA", "700"))
         self._vad_calib_chunks = int(os.getenv("VAD_CALIB_CHUNKS", "6"))  # ~240 ms of ambient
         self._vad_debug = os.getenv("VAD_DEBUG", "0") != "0"
+        # arecord cold-start often returns a level ramp / garbage in the first reads —
+        # discard a couple, and keep a short pre-roll so the sub-threshold onset of
+        # the first word (which would otherwise be dropped) is recovered.
+        self._warmup_chunks = int(os.getenv("CAPTURE_WARMUP_CHUNKS", "2"))
+        self._preroll_chunks = int(os.getenv("CAPTURE_PREROLL_CHUNKS", "4"))
         self._beeps = os.getenv("BEEP", "1") != "0"
         self._spk = find_usb_playback_device()
 
@@ -88,13 +98,14 @@ class VoiceSession:
         pcm = await self._record_utterance()
         ws = await connect_task
         if ws is None:
-            _light(LIGHT_IDLE)
+            _light(S_IDLE)
             return
         try:
             if not pcm:
                 logger.info("No speech — back to wake-word standby.")
+                _light(S_DIDNT_CATCH)  # "didn't catch that" pulse
             else:
-                _light(LIGHT_THINKING)
+                _light(S_THINKING)
                 await ws.send(pcm)
                 await ws.send(json.dumps({"event": "eou"}))
                 await self._receive_and_play(ws)
@@ -108,7 +119,7 @@ class VoiceSession:
                 pass
             _voice(False)
             _level(0)
-            _light(LIGHT_IDLE)
+            _light(S_IDLE)
 
     async def _connect(self):
         """Open the voice WS and do the hello/ready handshake. Returns ws or None."""
@@ -138,22 +149,27 @@ class VoiceSession:
         mic = AudioCapture(sample_rate=self._cr)
         await mic.start()
         _voice(True)
-        _light(LIGHT_LISTEN)
+        _light(S_LISTENING)  # the listen halo brightens with your voice (via _level)
 
         frames: list[bytes] = []
+        preroll: deque[bytes] = deque(maxlen=self._preroll_chunks)
         speech_chunks = silence_chunks = 0
         started = False
+        flushed = False
         waited = 0.0
         got_speech = False
+        warmup_left = self._warmup_chunks
         need_silence = self._vad.silence_chunks()
         need_speech = self._vad.min_speech_chunks()
         max_speech = self._vad.max_speech_chunks()
 
-        # Calibrate the ambient noise floor from the first few (silent) chunks,
-        # then anything below floor + delta counts as silence. Seeded with the
-        # static floor so a quiet room still has a sane minimum.
+        # Calibrate the ambient noise floor from the first few quiet chunks, then
+        # anything below floor + delta counts as silence. min() takes the quietest
+        # reading (so a word between calib chunks doesn't poison it); the clamp keeps
+        # a fully-loud calibration window from inflating the threshold for the turn.
         floor = float(self._vad.cfg.threshold)
         noise = floor
+        noise_ceiling = floor * 8
         calib_left = self._vad_calib_chunks
         try:
             while True:
@@ -164,18 +180,23 @@ class VoiceSession:
                         if waited >= self._idle_timeout:
                             break
                     continue
+                if warmup_left > 0:  # drop arecord cold-start ramp/garbage
+                    warmup_left -= 1
+                    continue
                 rms = self._vad.rms(chunk)
                 if not started and calib_left > 0:
-                    # take the quietest reading as the floor (ignores an early blip)
                     noise = float(rms) if calib_left == self._vad_calib_chunks else min(noise, rms)
+                    noise = min(noise, noise_ceiling)
                     calib_left -= 1
                 thresh = max(floor, noise + self._vad_delta)
                 is_speech = rms > thresh
                 if self._vad_debug:
-                    logger.info(f"vad rms={rms} noise={noise:.0f} thr={thresh:.0f} {'SPEAK' if is_speech else 'sil'}")
+                    logger.info(f"vad rms={rms} peak={_peak(chunk)} noise={noise:.0f} thr={thresh:.0f} "
+                                f"sp={speech_chunks} sil={silence_chunks} {'SPEAK' if is_speech else 'sil'}")
                 if is_speech:
-                    if not started:
-                        _light(LIGHT_USER_TALKING)
+                    if not started and not flushed:
+                        frames.extend(preroll)  # recover the sub-threshold word onset
+                        flushed = True
                     started = True
                     speech_chunks += 1
                     silence_chunks = 0
@@ -184,6 +205,8 @@ class VoiceSession:
                 elif started:
                     silence_chunks += 1
                     frames.append(chunk)  # keep a little trailing silence
+                else:
+                    preroll.append(chunk)  # remember recent ambient for onset recovery
                 if started and speech_chunks >= need_speech and silence_chunks >= need_silence:
                     got_speech = True
                     break
@@ -197,6 +220,8 @@ class VoiceSession:
             return b""
         # Beep AFTER stopping the mic (so it isn't recorded) to mark "recording stopped".
         await self._beep(BEEP_STOP_HZ)
+        if self._vad_debug:
+            logger.info(f"captured {len(frames)} chunks (~{len(frames) * 40} ms), noise={noise:.0f}")
         return b"".join(frames)
 
     # -- stream the reply back and play it ---------------------------------- #
@@ -210,7 +235,7 @@ class VoiceSession:
                     if speaker is None:
                         speaker = AudioPlayback(sample_rate=self._out_sr)
                         await speaker.start()
-                        _light(LIGHT_SPEAK)
+                        _light(S_SPEAKING)
                     await speaker.write(bytes(msg))
                     _level(_peak(msg))
                     continue
@@ -232,7 +257,7 @@ class VoiceSession:
             if speaker:
                 await speaker.stop()
             _level(0)
-            _light(LIGHT_LISTEN)
+            _light(S_IDLE)
 
     # -- short feedback tone ------------------------------------------------ #
 

@@ -40,8 +40,8 @@ WAKE_WORD_POST_SILENCE_SEC = float(os.getenv("WAKE_WORD_POST_SILENCE_SEC", "0.0"
 # ignore detections right after (re)starting the listener (avoids warmup false-fires)
 WAKE_WORD_WARMUP_SEC = float(os.getenv("WAKE_WORD_WARMUP_SEC", "0.8"))
 
-# Ring LED states — must match sketch/sketch.ino and session.py.
-LIGHT_WAKE, LIGHT_CONFIRM = 1, 4
+# States (github.com/g10rg10/state-hormones) — must match sketch.ino / session.py.
+S_A2_WAKE, S_WAKEWORD = 1, 10
 
 _wake_event = threading.Event()
 _spotter: SherpaWakeWord | None = None
@@ -143,12 +143,9 @@ def _stop_wake_word():
 def _release_wake_mic():
     """Free the mic so the conversation's capture can grab it."""
     mcu.set_wake_word_state(False)
-    # Set WAKE as the settle target, then fire a CONFIRM pulse on top: the ring
-    # gives a bright "heard you" flash that fades back into the WAKE colour. The
-    # session then takes over with LISTEN once the mic is open (~0.4s), which is
-    # long enough for the pulse to be seen.
-    mcu.set_light_state(LIGHT_WAKE)
-    mcu.set_light_state(LIGHT_CONFIRM)
+    # Wake word heard → D2_wakeword: an attentive, cooler "your turn" halo that
+    # the session then holds as B2_listening once the mic is open.
+    mcu.set_light_state(S_WAKEWORD)
     try:
         _stop_wake_word()  # no sleep: the conversation's AudioCapture retries if busy
     except Exception as exc:
@@ -203,6 +200,7 @@ _ensure_audio_tools()
 pipeline = VoiceRealtime()
 pipeline.set_wake_mode(_wake_event, on_sleep=_on_pipeline_sleep)
 
+mcu.set_light_state(S_A2_WAKE)  # power-on: halo fades in, then settles to idle
 _start_wake_word()
 
 App.run()
