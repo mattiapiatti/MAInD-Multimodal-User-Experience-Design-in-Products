@@ -20,6 +20,8 @@ import struct
 import subprocess
 from collections import deque
 
+import numpy as np
+
 from arduino.app_utils import Logger
 
 from .audio import AudioCapture, AudioPlayback, VADConfig, VoiceActivityDetector
@@ -64,8 +66,8 @@ class VoiceSession:
             VADConfig(
                 threshold=int(os.getenv("VAD_THRESHOLD", "500")),  # absolute RMS floor
                 silence_ms=silence_ms,
-                min_speech_ms=300,
-                max_speech_ms=15000,
+                min_speech_ms=int(os.getenv("VAD_MIN_SPEECH_MS", "300")),
+                max_speech_ms=int(os.getenv("VAD_MAX_SPEECH_MS", "15000")),
                 chunk_ms=40,
             )
         )
@@ -81,6 +83,11 @@ class VoiceSession:
         # the first word (which would otherwise be dropped) is recovered.
         self._warmup_chunks = int(os.getenv("CAPTURE_WARMUP_CHUNKS", "2"))
         self._preroll_chunks = int(os.getenv("CAPTURE_PREROLL_CHUNKS", "4"))
+        # Per-utterance normalization: scale the captured speech to a consistent peak
+        # so far/quiet speech is boosted and near/hot speech is tamed before the STT
+        # (max_gain caps amplification so a near-silent turn isn't blown up into noise).
+        self._norm_peak = float(os.getenv("AUDIO_NORMALIZE_PEAK", "0.85"))
+        self._norm_max_gain = float(os.getenv("AUDIO_NORMALIZE_MAX_GAIN", "6.0"))
         self._beeps = os.getenv("BEEP", "1") != "0"
         self._spk = find_usb_playback_device()
 
@@ -93,15 +100,15 @@ class VoiceSession:
         # which time the connection + server-side STT warmup are ready.
         connect_task = asyncio.create_task(self._connect())
         _unmute(self._spk)  # so the beep + reply are audible
-        # Beep + open the mic IMMEDIATELY so the feedback tone fires the instant the
-        # wake word is accepted, not after the WebSocket connect.
-        pcm = await self._record_utterance()
-        ws = await connect_task
-        if ws is None:
-            _light(S_IDLE)
-            return
+        ws = None
         try:
-            if not pcm:
+            # Beep + open the mic IMMEDIATELY so the feedback tone fires the instant
+            # the wake word is accepted, not after the WebSocket connect.
+            pcm = await self._record_utterance()
+            ws = await connect_task
+            if ws is None:
+                logger.info("No connection — back to wake-word standby.")
+            elif not pcm:
                 logger.info("No speech — back to wake-word standby.")
                 _light(S_DIDNT_CATCH)  # "didn't catch that" pulse
             else:
@@ -113,10 +120,17 @@ class VoiceSession:
         except Exception as e:  # noqa: BLE001
             logger.error(f"session error: {e}")
         finally:
-            try:
-                await ws.close()
-            except Exception:
-                pass
+            # Always close/cancel the WS (even if _record_utterance raised before we
+            # awaited it) and reset every device indicator — no path may wedge.
+            if ws is None and connect_task.done() and not connect_task.cancelled():
+                ws = connect_task.result()  # a ws that opened while we errored out
+            if ws is not None:
+                try:
+                    await ws.close()
+                except Exception:
+                    pass
+            else:
+                connect_task.cancel()
             _voice(False)
             _level(0)
             _light(S_IDLE)
@@ -125,19 +139,28 @@ class VoiceSession:
         """Open the voice WS and do the hello/ready handshake. Returns ws or None."""
         from websockets.asyncio.client import connect
 
+        ws = None
         try:
             # ping_interval=None: a turn can keep the brain busy past the keepalive.
-            ws = await connect(
-                self._url, max_size=None, ping_interval=None, additional_headers=self._headers
+            ws = await asyncio.wait_for(
+                connect(self._url, max_size=None, ping_interval=None, additional_headers=self._headers),
+                timeout=10,
             )
             await ws.send(json.dumps({"event": "hello", "input_sample_rate": self._cr}))
-            ready = json.loads(await ws.recv())
+            # Bound the handshake: a server that accepts the upgrade but never sends
+            # 'ready' must not wedge the whole loop.
+            ready = json.loads(await asyncio.wait_for(ws.recv(), timeout=10))
             if ready.get("event") == "ready":
                 self._out_sr = ready.get("output_sample_rate", self._out_sr)
             logger.info(f"Voice Agent Service connected (reply {self._out_sr} Hz)")
             return ws
         except Exception as e:  # noqa: BLE001
             logger.error(f"connect failed: {e}")
+            if ws is not None:  # opened but handshake failed → don't leak it
+                try:
+                    await ws.close()
+                except Exception:
+                    pass
             return None
 
     # -- record one utterance with VAD -------------------------------------- #
@@ -156,7 +179,6 @@ class VoiceSession:
         speech_chunks = silence_chunks = 0
         started = False
         flushed = False
-        waited = 0.0
         got_speech = False
         warmup_left = self._warmup_chunks
         need_silence = self._vad.silence_chunks()
@@ -171,14 +193,27 @@ class VoiceSession:
         noise = floor
         noise_ceiling = floor * 8
         calib_left = self._vad_calib_chunks
+        # Wall-clock bounds so the loop can NEVER spin forever: idle_timeout while
+        # no one has started talking, and an absolute backstop that also covers the
+        # "started but the end condition never triggers" case (brief blip + silence,
+        # or audio that stays just under threshold). Uses the loop clock so it's
+        # independent of whether reads return on timeout or instantly.
+        loop = asyncio.get_event_loop()
+        t0 = loop.time()
+        hard_cap = self._idle_timeout + max_speech * 0.04 + 5.0
         try:
             while True:
                 chunk = await mic.read_chunk(timeout=0.5)
-                if not chunk:
-                    if not started:  # nobody has started talking yet
-                        waited += 0.5
-                        if waited >= self._idle_timeout:
-                            break
+                if chunk is None:  # capture stream ended (arecord died/EOF)
+                    logger.warning("capture stream ended early")
+                    break
+                elapsed = loop.time() - t0
+                if not started and elapsed >= self._idle_timeout:
+                    break  # nobody spoke within the idle window
+                if elapsed >= hard_cap:
+                    logger.warning("recording hit the absolute time cap")
+                    break
+                if not chunk:  # timeout: no audio this tick
                     continue
                 if warmup_left > 0:  # drop arecord cold-start ramp/garbage
                     warmup_left -= 1
@@ -216,13 +251,19 @@ class VoiceSession:
         finally:
             await mic.stop()
 
+        # If we broke out via a time cap but actually captured enough speech, still
+        # send it rather than dropping the turn.
+        if not got_speech and speech_chunks >= need_speech:
+            got_speech = True
         if not got_speech:
             return b""
         # Beep AFTER stopping the mic (so it isn't recorded) to mark "recording stopped".
         await self._beep(BEEP_STOP_HZ)
+        pcm, gain, peak = _normalize(b"".join(frames), self._norm_peak, self._norm_max_gain)
         if self._vad_debug:
-            logger.info(f"captured {len(frames)} chunks (~{len(frames) * 40} ms), noise={noise:.0f}")
-        return b"".join(frames)
+            logger.info(f"captured {len(frames)} chunks (~{len(frames) * 40} ms), "
+                        f"peak={peak} gain={gain:.2f} noise={noise:.0f}")
+        return pcm
 
     # -- stream the reply back and play it ---------------------------------- #
 
@@ -230,7 +271,13 @@ class VoiceSession:
         speaker: AudioPlayback | None = None
         try:
             while True:
-                msg = await ws.recv()
+                # Bound each read: a half-open server (no FIN, common behind proxies)
+                # must not block forever waiting for 'speaking_end'.
+                try:
+                    msg = await asyncio.wait_for(ws.recv(), timeout=30)
+                except asyncio.TimeoutError:
+                    logger.warning("reply stream timed out — ending turn")
+                    break
                 if isinstance(msg, (bytes, bytearray)):
                     if speaker is None:
                         speaker = AudioPlayback(sample_rate=self._out_sr)
@@ -264,18 +311,44 @@ class VoiceSession:
     async def _beep(self, freq_hz: int, ms: int = 120) -> None:
         if not self._beeps:
             return
+        proc = None
         try:
             proc = await asyncio.create_subprocess_exec(
                 "aplay", "-q", "-D", self._spk,
                 "-f", "S16_LE", "-r", str(BEEP_SR), "-c", "1", "-t", "raw",
                 stdin=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL,
             )
-            await proc.communicate(_tone_pcm(freq_hz, ms))
-        except Exception:  # noqa: BLE001 — a missing speaker must not break the turn
-            pass
+            # Bound it: a wedged/contended speaker must never hang the turn.
+            await asyncio.wait_for(proc.communicate(_tone_pcm(freq_hz, ms)), timeout=2.0)
+        except Exception:  # noqa: BLE001 — a missing/stuck speaker must not break the turn
+            if proc is not None and proc.returncode is None:
+                try:
+                    proc.kill()
+                    await proc.wait()
+                except Exception:
+                    pass
 
 
 # -- helpers ---------------------------------------------------------------- #
+
+def _normalize(pcm: bytes, target_peak: float, max_gain: float):
+    """Scale an utterance so its peak reaches target_peak*full-scale, capped at
+    max_gain. Boosts far/quiet speech, leaves already-hot speech alone. Returns
+    (pcm, applied_gain, original_peak)."""
+    if not pcm or max_gain <= 1.0:
+        return pcm, 1.0, 0
+    x = np.frombuffer(pcm, dtype=np.int16)
+    if x.size == 0:
+        return pcm, 1.0, 0
+    peak = int(np.max(np.abs(x.astype(np.int32))))
+    if peak < 400:  # essentially silence — don't amplify noise
+        return pcm, 1.0, peak
+    gain = min(max_gain, (target_peak * 32767.0) / peak)
+    if gain <= 1.01:  # already loud (or clipping) — leave as-is
+        return pcm, 1.0, peak
+    y = np.clip(x.astype(np.float32) * gain, -32768, 32767).astype(np.int16)
+    return y.tobytes(), gain, peak
+
 
 def _tone_pcm(freq_hz: int, ms: int, sample_rate: int = BEEP_SR, vol: float = 0.3) -> bytes:
     n = int(sample_rate * ms / 1000)
@@ -294,7 +367,8 @@ def _tone_pcm(freq_hz: int, ms: int, sample_rate: int = BEEP_SR, vol: float = 0.
 def _unmute(device: str) -> None:
     card = device.split(":")[1].split(",")[0] if ":" in device else "0"
     try:
-        subprocess.run(["amixer", "-c", card, "sset", "PCM", "60%", "unmute"], capture_output=True)
+        subprocess.run(["amixer", "-c", card, "sset", "PCM", "60%", "unmute"],
+                       capture_output=True, timeout=2)
     except Exception:
         pass
 

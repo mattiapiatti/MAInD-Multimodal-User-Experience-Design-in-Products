@@ -114,7 +114,7 @@ def _create_spotter():
 
 
 def _start_wake_word():
-    global _spotter, _spotter_started, _wake_enabled, _wake_started_at
+    global _spotter, _spotter_started, _wake_enabled, _wake_started_at, _wake_pending
     with _state_lock:
         if _session_active:
             # A conversation owns the mic; never open a second arecord on it.
@@ -124,6 +124,7 @@ def _start_wake_word():
         _spotter.start()
         _spotter_started = True
         _wake_enabled = True
+        _wake_pending = False  # clear any stale latch so a fresh arm can fire
         _wake_started_at = time.monotonic()
     mcu.set_wake_word_state(True)
     logger.info(f"Sleeping. Say '{WAKE_WORD_PHRASE}' to start.")
@@ -193,6 +194,26 @@ def _on_pipeline_sleep():
     threading.Thread(target=_restart_wake_word, daemon=True).start()
 
 
+def _wake_watchdog():
+    """The wake-listener thread can die silently (arecord EOF on a USB re-enumerate,
+    or a classify error). When that happens the device goes deaf with no recovery.
+    Poll the spotter and re-arm it if it has stopped while it should be listening."""
+    while True:
+        time.sleep(2.0)
+        with _state_lock:
+            armed = _wake_enabled and _spotter_started and not _session_active
+            spotter = _spotter
+        if not armed or spotter is None:
+            continue
+        thread = getattr(spotter, "_thread", None)
+        if thread is not None and not thread.is_alive():
+            logger.warning("Wake listener thread died — re-arming.")
+            try:
+                _restart_wake_word()
+            except Exception as exc:  # noqa: BLE001
+                logger.error(f"watchdog re-arm failed: {exc}")
+
+
 # ---- Boot ------------------------------------------------------------------
 
 _ensure_audio_tools()
@@ -202,5 +223,6 @@ pipeline.set_wake_mode(_wake_event, on_sleep=_on_pipeline_sleep)
 
 mcu.set_light_state(S_A2_WAKE)  # power-on: halo fades in, then settles to idle
 _start_wake_word()
+threading.Thread(target=_wake_watchdog, name="wake-watchdog", daemon=True).start()
 
 App.run()

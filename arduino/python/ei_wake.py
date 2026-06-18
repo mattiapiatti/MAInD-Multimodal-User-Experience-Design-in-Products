@@ -120,7 +120,13 @@ class EiWakeWord:
             if self._stop.is_set():
                 return None
             proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+            # Publish immediately so stop()/_kill_arecord can terminate THIS in-flight
+            # attempt (otherwise stop() returns while a stray arecord lingers).
+            self._proc = proc
             time.sleep(0.05)
+            if self._stop.is_set():  # stop() fired during the wait → bail out cleanly
+                self._kill_arecord()
+                return None
             if proc.poll() is None:
                 return proc
             if attempt == 0:

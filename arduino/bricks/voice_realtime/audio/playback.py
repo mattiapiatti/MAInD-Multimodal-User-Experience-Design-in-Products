@@ -34,10 +34,13 @@ class AudioPlayback:
 
         # Unmute ALSA PCM hardware volume (starts at 0 on Q5+)
         card = self.device.split(":")[1].split(",")[0] if ":" in self.device else "0"
-        subprocess.run(
-            ["amixer", "-c", card, "sset", "PCM", "40%", "unmute"],
-            capture_output=True,
-        )
+        try:
+            subprocess.run(
+                ["amixer", "-c", card, "sset", "PCM", "40%", "unmute"],
+                capture_output=True, timeout=2,
+            )
+        except Exception:  # a stuck amixer must not block playback startup
+            pass
 
         from arduino.app_utils import Logger
         Logger("audio").info(f"Playback: {self.device} @ {self.sample_rate}Hz")
@@ -59,6 +62,18 @@ class AudioPlayback:
     async def stop(self) -> None:
         if self._proc:
             if self._proc.stdin:
-                self._proc.stdin.close()
-            await self._proc.wait()
+                try:
+                    self._proc.stdin.close()
+                except Exception:
+                    pass
+            # aplay normally drains and exits when stdin closes; if it's wedged in
+            # the ALSA driver (xrun/device stuck), kill it rather than hang forever.
+            try:
+                await asyncio.wait_for(self._proc.wait(), timeout=2.0)
+            except Exception:
+                try:
+                    self._proc.kill()
+                    await self._proc.wait()
+                except Exception:
+                    pass
             self._proc = None

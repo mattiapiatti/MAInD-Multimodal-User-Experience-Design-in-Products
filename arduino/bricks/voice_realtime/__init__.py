@@ -80,20 +80,32 @@ class VoiceRealtime:
             import traceback
             traceback.print_exc()
         finally:
+            # If the loop ever dies, make sure main.py releases _session_active and
+            # re-arms the wake word so the device doesn't stay deaf.
+            if self._on_sleep:
+                try:
+                    self._on_sleep()
+                except Exception:
+                    pass
             self._loop.close()
 
     async def _run(self):
-        session = self._build_session()
+        session = None
         while True:
             if self._wake_event is not None:
                 logger.info("Sleeping — waiting for the wake word.")
                 await asyncio.get_event_loop().run_in_executor(None, self._wake_event.wait)
                 self._wake_event.clear()
             try:
+                # Build lazily and per-loop: a config error (e.g. missing URL) then
+                # logs once per wake and still re-arms, instead of killing the thread
+                # while main.py keeps firing wakes into a dead loop.
+                if session is None:
+                    session = self._build_session()
                 await session.run_conversation()
             except Exception as exc:  # noqa: BLE001
-                # A busy mic / dropped connection must return us to standby,
-                # never kill the loop (the device would go deaf until reboot).
+                # A busy mic / dropped connection / misconfig must return us to
+                # standby, never kill the loop (the device would go deaf until reboot).
                 logger.error(f"conversation error: {exc}")
             if self._wake_event is None:
                 break

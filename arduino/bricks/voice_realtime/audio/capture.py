@@ -20,6 +20,33 @@ SAMPLE_RATE = 16000
 CAP_RATE = int(os.getenv("AUDIO_CAP_RATE", os.getenv("WAKE_WORD_CAP_RATE", "48000")))
 BOOST = float(os.getenv("AUDIO_BOOST", "1.0"))  # native capture is already loud
 
+# The USB mic's hardware gain is shared by the wake listener and the conversation.
+# At +16 dB (max) conversation speech CLIPS (distorted → STT mis-transcribes), but
+# the wake model was trained at that gain. So drop the gain only for the conversation
+# capture and restore it on stop, leaving the wake word untouched. Empty = leave as-is.
+CAPTURE_GAIN = os.getenv("AUDIO_CAPTURE_GAIN", "").strip()  # e.g. "50%"
+WAKE_GAIN = os.getenv("AUDIO_WAKE_GAIN", "").strip()        # restored on stop, e.g. "100%"
+MIC_CONTROL = os.getenv("AUDIO_MIC_CONTROL", "Mic")          # ALSA capture control name
+
+
+def _card_of(device: str) -> str:
+    """plughw:0,0 -> '0' ; plughw:CARD=Q5,DEV=0 -> 'Q5'."""
+    try:
+        first = device.split(":", 1)[1].split(",")[0]
+        return first.split("=", 1)[1] if first.upper().startswith("CARD=") else first
+    except Exception:
+        return "0"
+
+
+def _set_mic_gain(device: str, value: str) -> None:
+    if not value:
+        return
+    try:
+        subprocess.run(["amixer", "-c", _card_of(device), "sset", MIC_CONTROL, value, "cap"],
+                       capture_output=True, timeout=2)
+    except Exception:
+        pass
+
 
 def find_device() -> str:
     """Return the standalone mic (card with capture but NO playback)."""
@@ -64,37 +91,50 @@ class AudioCapture:
         from arduino.app_utils import Logger
         logger = Logger("audio")
         logger.info(f"Capture: {self.device} @ {self.cap_rate}->{self.sample_rate}Hz")
+        _set_mic_gain(self.device, CAPTURE_GAIN)  # lower gain so speech doesn't clip
         # The wake-word spotter may still be releasing the shared ALSA device.
         # Poll tightly (50 ms) so we grab the mic the instant it frees up — at
         # 0.2s steps the first reopen alone could cost ~200 ms of dead air.
         attempts = 100  # ~5s at 0.05s each
-        for attempt in range(attempts):
-            self._proc = await asyncio.create_subprocess_exec(
-                "arecord", "-D", self.device,
-                "-f", "S16_LE", "-r", str(self.cap_rate), "-c", str(self.channels), "-t", "raw",
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.DEVNULL,
-            )
-            await asyncio.sleep(0.05)
-            if self._proc.returncode is None:
-                return
-            if attempt == 0:
-                logger.info("Capture device busy, waiting for it to free up...")
-            try:
-                self._proc.kill()
-                await self._proc.wait()
-            except ProcessLookupError:
-                pass
-            self._proc = None
-        raise RuntimeError(f"Could not open capture device {self.device} after {attempts} attempts")
+        try:
+            for attempt in range(attempts):
+                self._proc = await asyncio.create_subprocess_exec(
+                    "arecord", "-D", self.device,
+                    "-f", "S16_LE", "-r", str(self.cap_rate), "-c", str(self.channels), "-t", "raw",
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.DEVNULL,
+                )
+                await asyncio.sleep(0.05)
+                if self._proc.returncode is None:
+                    return
+                if attempt == 0:
+                    logger.info("Capture device busy, waiting for it to free up...")
+                try:
+                    self._proc.kill()
+                    await self._proc.wait()
+                except ProcessLookupError:
+                    pass
+                self._proc = None
+            raise RuntimeError(f"Could not open capture device {self.device} after {attempts} attempts")
+        except BaseException:
+            # We lowered the shared mic gain above; if we never acquire the device,
+            # restore the wake-word gain so the spotter isn't left deaf.
+            _set_mic_gain(self.device, WAKE_GAIN)
+            raise
 
-    async def read_chunk(self, timeout: float = 1.0) -> bytes:
+    async def read_chunk(self, timeout: float = 1.0):
+        """40ms of 16k mono PCM, or b'' on timeout (no audio yet), or None if the
+        capture stream ended (arecord died/EOF) so the caller can stop the turn."""
+        if self._proc is None or self._proc.returncode is not None:
+            return None
         try:
             raw = await asyncio.wait_for(
                 self._proc.stdout.readexactly(self._cap_bytes), timeout=timeout
             )
-        except (asyncio.TimeoutError, asyncio.IncompleteReadError):
+        except asyncio.TimeoutError:
             return b""
+        except asyncio.IncompleteReadError:
+            return None  # stream closed mid-read — arecord exited
         x = np.frombuffer(raw, dtype=np.int16)
         if self.channels > 1:
             x = x.reshape(-1, self.channels).mean(axis=1)
@@ -111,3 +151,4 @@ class AudioCapture:
             self._proc.kill()
             await self._proc.wait()
             self._proc = None
+        _set_mic_gain(self.device, WAKE_GAIN)  # restore the wake-word gain
