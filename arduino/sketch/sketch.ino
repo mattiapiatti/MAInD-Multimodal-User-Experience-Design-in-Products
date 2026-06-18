@@ -8,6 +8,17 @@
 
 Adafruit_NeoPixel strip(NEO_COUNT, NEO_PIN, NEO_GRB + NEO_KHZ800);
 
+// ---- Activation button -------------------------------------------------------
+// A Cherry MX switch (2 pins = a plain momentary contact): one pin to D2, the
+// other to GND. INPUT_PULLUP means the pin reads HIGH when released, LOW when
+// pressed. We debounce it and expose the HELD state; the Linux side polls that
+// (only while idle) — held = listening ON + halo on, released = OFF (hold to talk).
+#define BUTTON_PIN 2
+#define BTN_DEBOUNCE_MS 30
+int  btnStable     = HIGH;   // debounced state (HIGH = released, LOW = held)
+int  btnLastRead   = HIGH;
+unsigned long btnLastChangeMs = 0;
+
 // ---- States (github.com/g10rg10/state-hormones — Maind X spec) ---------------
 // The eyes/faces will live on a SEPARATE ESP32 over UART. Here the NeoPixel ring
 // is only the EXTERNAL light halo (Maind X §0): every state maps to a light
@@ -157,6 +168,16 @@ void setAudioLevel(int level) {
   lastAudioLevelUpdate = millis();
 }
 
+// Debounce the button each loop tick; btnStable holds the settled level.
+void pollButton() {
+  int r = digitalRead(BUTTON_PIN);
+  if (r != btnLastRead) { btnLastRead = r; btnLastChangeMs = millis(); }
+  if (millis() - btnLastChangeMs >= BTN_DEBOUNCE_MS) btnStable = r;
+}
+
+// Host polls this (while idle): 1 = held (listen), 0 = released (off).
+long getButton() { lastRpcMs = millis(); return (long)(btnStable == LOW ? 1 : 0); }
+
 // ---- LED matrix helpers ----------------------------------------------------
 
 uint8_t scanBrightness(int col, float head, float tail) {
@@ -268,16 +289,21 @@ void setup() {
   strip.clear();
   strip.show();
 
+  pinMode(BUTTON_PIN, INPUT_PULLUP);  // Cherry switch: D2 ↔ GND, pressed = LOW
+
   Bridge.begin();
   Bridge.provide("set_color",           setLedColor);
   Bridge.provide("set_wake_word_state", setWakeWordState);
   Bridge.provide("set_voice_state",     setVoiceState);
   Bridge.provide("set_audio_level",     setAudioLevel);
   Bridge.provide("set_light_state",     setLightState);
+  Bridge.provide("get_button",          getButton);
 }
 
 void loop() {
   unsigned long now = millis();
+
+  pollButton();  // debounce + count presses (Linux polls the count when idle)
 
   // Decay audio level if no update for 150 ms
   if (audioLevel > 0 && now - lastAudioLevelUpdate > 150)

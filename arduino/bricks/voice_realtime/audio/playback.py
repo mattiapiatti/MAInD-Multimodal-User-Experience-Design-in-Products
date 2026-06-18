@@ -1,8 +1,19 @@
 """Speaker playback via an aplay stdin pipe."""
 
 import asyncio
+import os
 import shutil
 import subprocess
+
+# How long to let aplay drain its buffered audio after stdin closes before we treat
+# it as wedged and kill it. Must be > the buffered tail of a real reply (pipe + ALSA
+# buffer), or the end of the bot's speech gets truncated. Only bounds a stuck device.
+DRAIN_TIMEOUT = float(os.getenv("AUDIO_DRAIN_TIMEOUT", "20"))
+
+# ALSA ring-buffer / period (microseconds). 40ms was tiny — prone to underrun glitches
+# and backpressure on bursty streams. A few hundred ms is smoother; raise if choppy.
+PLAYBACK_BUFFER_US = os.getenv("AUDIO_PLAYBACK_BUFFER_US", "200000")
+PLAYBACK_PERIOD_US = os.getenv("AUDIO_PLAYBACK_PERIOD_US", "40000")
 
 
 def find_usb_playback_device() -> str:
@@ -49,7 +60,7 @@ class AudioPlayback:
             "aplay", "-D", self.device,
             "-f", "S16_LE", "-r", str(self.sample_rate), "-c", "1",
             "-t", "raw",
-            "--buffer-time=40000", "--period-time=10000",  # 40ms buffer keeps matrix in sync
+            f"--buffer-time={PLAYBACK_BUFFER_US}", f"--period-time={PLAYBACK_PERIOD_US}",
             stdin=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.DEVNULL,
         )
@@ -68,8 +79,9 @@ class AudioPlayback:
                     pass
             # aplay normally drains and exits when stdin closes; if it's wedged in
             # the ALSA driver (xrun/device stuck), kill it rather than hang forever.
+            # The timeout is generous so a real reply's buffered tail isn't cut off.
             try:
-                await asyncio.wait_for(self._proc.wait(), timeout=2.0)
+                await asyncio.wait_for(self._proc.wait(), timeout=DRAIN_TIMEOUT)
             except Exception:
                 try:
                     self._proc.kill()

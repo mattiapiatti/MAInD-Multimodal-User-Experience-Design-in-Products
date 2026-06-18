@@ -41,7 +41,11 @@ WAKE_WORD_POST_SILENCE_SEC = float(os.getenv("WAKE_WORD_POST_SILENCE_SEC", "0.0"
 WAKE_WORD_WARMUP_SEC = float(os.getenv("WAKE_WORD_WARMUP_SEC", "0.8"))
 
 # States (github.com/g10rg10/state-hormones) — must match sketch.ino / session.py.
-S_A2_WAKE, S_WAKEWORD = 1, 10
+S_OFF, S_A2_WAKE, S_IDLE, S_WAKEWORD = 0, 1, 2, 10
+
+# Press the physical button to start/stop. Period between MCU button polls (only
+# while idle, so the poll can't collide with a ring show() on the serial bridge).
+BUTTON_POLL_SEC = float(os.getenv("BUTTON_POLL_SEC", "0.09"))
 
 _wake_event = threading.Event()
 _spotter: SherpaWakeWord | None = None
@@ -53,6 +57,9 @@ _wake_started_at = 0.0
 # listener must NOT run (two arecords on the shared device => "busy" => crash).
 _state_lock = threading.Lock()
 _session_active = False
+# The button toggles this. Until it's True the wake word is NOT listening and the
+# halo is off; a press arms listening + lights the halo, another press turns it off.
+_listening_active = False
 
 
 def _ensure_audio_tools():
@@ -116,8 +123,9 @@ def _create_spotter():
 def _start_wake_word():
     global _spotter, _spotter_started, _wake_enabled, _wake_started_at, _wake_pending
     with _state_lock:
-        if _session_active:
-            # A conversation owns the mic; never open a second arecord on it.
+        if _session_active or not _listening_active:
+            # A conversation owns the mic, or the button hasn't enabled listening:
+            # never open a second arecord / never arm while "off".
             return
         if _spotter is None:
             _spotter = _create_spotter()
@@ -214,6 +222,45 @@ def _wake_watchdog():
                 logger.error(f"watchdog re-arm failed: {exc}")
 
 
+def _set_active(active: bool):
+    """Hold-to-listen: held → arm wake word + halo on; released → stop + halo off."""
+    global _listening_active
+    with _state_lock:
+        if active == _listening_active:
+            return
+        _listening_active = active
+    if active:
+        logger.info("Button held → listening ON")
+        _start_wake_word()           # arms the spotter (respects _listening_active)
+        mcu.set_light_state(S_IDLE)  # halo on (idle glow)
+    else:
+        logger.info("Button released → listening OFF")
+        _stop_wake_word()
+        mcu.set_light_state(S_OFF)   # halo off
+
+
+def _button_poll():
+    """Poll the MCU button STATE and follow it: held = active, released = off.
+    Only while idle (no conversation) so the request/response can't collide with a
+    ring show() on the serial bridge."""
+    last_held = False
+    while True:
+        time.sleep(BUTTON_POLL_SEC)
+        if _session_active:
+            continue  # ring is animating a turn — defer polling to avoid a collision
+        state = mcu.get_button()  # 1 = held, 0 = released, None on a bridge hiccup
+        if state is None:
+            continue
+        held = state == 1
+        if held == last_held:
+            continue
+        last_held = held
+        try:
+            _set_active(held)
+        except Exception as exc:  # noqa: BLE001
+            logger.error(f"button handling failed: {exc}")
+
+
 # ---- Boot ------------------------------------------------------------------
 
 _ensure_audio_tools()
@@ -221,8 +268,9 @@ _ensure_audio_tools()
 pipeline = VoiceRealtime()
 pipeline.set_wake_mode(_wake_event, on_sleep=_on_pipeline_sleep)
 
-mcu.set_light_state(S_A2_WAKE)  # power-on: halo fades in, then settles to idle
-_start_wake_word()
+# Start INACTIVE: halo off and NOT listening. Press the button to begin.
+mcu.set_light_state(S_OFF)
 threading.Thread(target=_wake_watchdog, name="wake-watchdog", daemon=True).start()
+threading.Thread(target=_button_poll, name="button-poll", daemon=True).start()
 
 App.run()

@@ -269,6 +269,8 @@ class VoiceSession:
 
     async def _receive_and_play(self, ws) -> None:
         speaker: AudioPlayback | None = None
+        audio_bytes = 0
+        end_reason = "speaking_end"
         try:
             while True:
                 # Bound each read: a half-open server (no FIN, common behind proxies)
@@ -276,6 +278,7 @@ class VoiceSession:
                 try:
                     msg = await asyncio.wait_for(ws.recv(), timeout=30)
                 except asyncio.TimeoutError:
+                    end_reason = "recv-timeout"
                     logger.warning("reply stream timed out — ending turn")
                     break
                 if isinstance(msg, (bytes, bytearray)):
@@ -283,6 +286,7 @@ class VoiceSession:
                         speaker = AudioPlayback(sample_rate=self._out_sr)
                         await speaker.start()
                         _light(S_SPEAKING)
+                    audio_bytes += len(msg)
                     await speaker.write(bytes(msg))
                     _level(_peak(msg))
                     continue
@@ -300,7 +304,12 @@ class VoiceSession:
                     logger.error(f"brain error: {data.get('message')}")
                 elif event == "speaking_end":
                     break
+        except Exception as e:  # noqa: BLE001 — record WHY the stream ended (e.g. closed)
+            end_reason = f"closed:{type(e).__name__}"
+            logger.error(f"reply stream ended early: {e}")
         finally:
+            dur = audio_bytes / 2.0 / max(1, self._out_sr)
+            logger.info(f"reply audio: {audio_bytes} B (~{dur:.1f}s), ended via {end_reason}")
             if speaker:
                 await speaker.stop()
             _level(0)

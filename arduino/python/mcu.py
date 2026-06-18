@@ -97,3 +97,13 @@ def set_led_color(led_id: int, r: int, g: int, b: int) -> bool:
 
 def set_light_state(state: int):
     _notify("set_light_state", [state])
+
+
+def get_button():
+    """Running count of debounced button presses on the MCU, or None on failure.
+    Poll only while idle (no conversation) so the request/response can't collide
+    with a ring show() on the serial bridge."""
+    ok, result = _request("get_button", [])
+    if ok and isinstance(result, int):
+        return result
+    return None
