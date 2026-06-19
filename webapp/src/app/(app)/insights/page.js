@@ -1,13 +1,8 @@
 import { requireOnboardedUser } from "@/lib/auth/guard";
-import {
-  getSeverityTrend,
-  getFrequencyByMonth,
-  getSummary,
-  TRACKED,
-} from "@/lib/mock/health";
+import { getFrequencyByMonth, getSummary } from "@/lib/mock/health";
 import Screen from "@/components/shell/Screen";
 import Card from "@/components/ui/Card";
-import { SeverityChart, FrequencyChart } from "@/components/insights/Charts";
+import { FrequencyChart } from "@/components/insights/Charts";
 import DownloadReport from "@/components/insights/DownloadReport";
 import styles from "./insights.module.css";
 
@@ -15,7 +10,6 @@ export const metadata = { title: "Insights" };
 
 export default async function InsightsPage() {
   await requireOnboardedUser();
-  const severity = getSeverityTrend();
   const frequency = getFrequencyByMonth();
   const summary = getSummary();
 
@@ -36,10 +30,6 @@ export default async function InsightsPage() {
           <span className={styles.kpiLbl}>day streak</span>
         </div>
       </div>
-
-      <Card title="Intensity over time" subtitle="Last 6 weeks (0–10)" padded>
-        <SeverityChart data={severity} series={TRACKED} />
-      </Card>
 
       <Card title="Symptom frequency" subtitle="Days per month" padded>
         <FrequencyChart data={frequency} />
