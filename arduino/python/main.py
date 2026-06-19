@@ -9,12 +9,14 @@ Health-companion voice device — Linux (MPU) orchestration for the Arduino Uno 
 The ring LED / button live on the MCU and are driven over the bridge (see mcu.py).
 """
 
+import datetime
 import os
 import re
 import shutil
 import subprocess
 import threading
 import time
+from zoneinfo import ZoneInfo
 
 import mcu
 from sherpa_wake import SherpaWakeWord
@@ -241,12 +243,18 @@ def _set_active(active: bool):
 
 def _time_sync():
     """Push the wall clock to the ESP32 face every 30s (and once now) so its
-    A4_clock — shown whenever listening is OFF — reads the real, NTP-synced time.
-    The MCU just forwards it; the Uno Q halo ignores it."""
+    A4_clock — shown whenever listening is OFF — reads the real time. Uses the
+    Italian timezone (Europe/Rome, DST-aware) regardless of the board/container TZ
+    (which is typically UTC). The MCU just forwards it; the Uno Q halo ignores it."""
+    try:
+        tz = ZoneInfo("Europe/Rome")
+    except Exception as exc:  # noqa: BLE001 — tz db missing: fall back to system local time
+        logger.warning(f"Europe/Rome tz unavailable ({exc}); using system local time")
+        tz = None
     while True:
-        t = time.localtime()
+        now = datetime.datetime.now(tz)
         try:
-            mcu.set_time(t.tm_hour, t.tm_min, t.tm_sec)
+            mcu.set_time(now.hour, now.minute, now.second)
         except Exception as exc:  # noqa: BLE001 — a clock blip must never break the device
             logger.warning(f"time sync failed: {exc}")
         time.sleep(30)
