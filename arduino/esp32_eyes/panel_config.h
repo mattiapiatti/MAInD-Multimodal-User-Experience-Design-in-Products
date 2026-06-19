@@ -28,6 +28,8 @@
 #include <Wire.h>
 #include <Arduino_GFX_Library.h>
 #include <esp_heap_caps.h>
+#include <esp_lcd_panel_rgb.h>     // drive the RGB panel directly (tear-free double-fb)
+#include <esp_lcd_panel_ops.h>     // (FreeRTOS semaphore types come from Arduino.h)
 
 // ---- RGB data + sync pins (CONFIRMED — Espressif board file + Waveshare schematic) ----
 #define LCD_DE     40
@@ -63,7 +65,9 @@
 #define EXP_CS_BIT   2    // EXIO2 -> ST7701 3-wire SPI chip-select
 
 // ---- RGB timing (Espressif 2.8C set, paired with the init array below) ----
-#define PCLK_HZ     (16UL * 1000 * 1000)   // 16 MHz (18 MHz also works; 16 is calmer)
+#define PCLK_HZ     (12UL * 1000 * 1000)   // 12 MHz: lower scan bandwidth -> less PSRAM
+                                            // contention with the per-frame canvas copy
+                                            // (was 16 MHz; raise back if the panel flickers)
 #define HSYNC_PW    8
 #define HSYNC_BP    10
 #define HSYNC_FP    50
@@ -122,26 +126,88 @@ static const St7701Op ST7701_2V8C[] = {
   {0x29, 0, {0}, 20},    // Display On
 };
 
-// ---- gfx: RGB scan-out only (we send the ST7701 init ourselves below) ----
-static Arduino_ESP32RGBPanel* rgbpanel = new Arduino_ESP32RGBPanel(
-  LCD_DE, LCD_VSYNC, LCD_HSYNC, LCD_PCLK,
-  LCD_R0, LCD_R1, LCD_R2, LCD_R3, LCD_R4,
-  LCD_G0, LCD_G1, LCD_G2, LCD_G3, LCD_G4, LCD_G5,
-  LCD_B0, LCD_B1, LCD_B2, LCD_B3, LCD_B4,
-  1 /*hsync_polarity*/, HSYNC_FP, HSYNC_PW, HSYNC_BP,
-  1 /*vsync_polarity*/, VSYNC_FP, VSYNC_PW, VSYNC_BP,
-  PCLK_NEG, PCLK_HZ,
-  false /*useBigEndian*/, 0 /*de_idle_high*/, 0 /*pclk_idle_high*/,
-  480 * 40 /*bounce_buffer_size_px*/);
-  // ^ bounce buffer: the LCD DMA refills a small internal-SRAM buffer in bursts
-  //   instead of reading the framebuffer straight from PSRAM, so the canvas flush
-  //   (a 460KB PSRAM write burst) can't starve the scan-out into flashing/blanking.
+// ---- RGB scan-out via esp_lcd DIRECTLY, with TWO framebuffers for a TEAR-FREE swap.
+// Arduino_GFX's Arduino_ESP32RGBPanel hard-codes num_fbs=1, so a canvas flush copies
+// straight into the LIVE scanned framebuffer — the scan reads a half-updated frame and
+// you get tearing: white/black bands that split & shift the face during motion.
+//
+// We drive esp_lcd ourselves with num_fbs=2: panelFlush() hands the finished canvas to
+// esp_lcd_panel_draw_bitmap(), which fills the OFF-screen framebuffer and swaps it in at
+// the next VSYNC — a torn frame is never scanned out.
+//
+// *** num_fbs=2 alone fixes TEARING, not the PSRAM bandwidth. *** renderFrame rewrites the
+// whole 460KB framebuffer every frame; with bounce=0 that PSRAM write burst starves the LCD
+// scan-out (same PSRAM bus) -> the whole image flickers/blanks (exactly "lo schermo lampeggia",
+// and the README's "flashing/blanking -> raise the bounce buffer"). So we keep BOTH: num_fbs=2
+// for the tear-free swap AND a bounce buffer so the scan rides internal SRAM through the burst.
+//
+// The earlier "double-fb + bounce duplicates & shifts sideways" was bounce-restart DESYNC, not
+// a real incompatibility. Two requirements make it stable, both met below:
+//   1. bounce_buffer_size_px MUST divide h_res*v_res exactly (480*40 = 19200; 230400/19200 = 12)
+//      — a non-dividing size restarts the bounce DMA mid-frame => the sideways shift.
+//   2. bb_invalidate_cache = true — the FB lives in PSRAM and is written through cache; without
+//      the invalidate the bounce DMA can latch stale cache lines => duplicated/garbled bands.
+// If the sideways desync STILL returns on this Arduino core (its prebuilt sdkconfig may not
+// restart-the-bounce-in-vsync), the proven fallback is num_fbs=1 + this bounce buffer: zero
+// flicker, only a faint single tear line during motion (the README's documented-stable state).
+static esp_lcd_panel_handle_t g_rgbPanel = nullptr;
+static uint16_t *g_fb0 = nullptr, *g_fb1 = nullptr, *g_drawFb = nullptr;  // driver FBs + current back
+static SemaphoreHandle_t g_semGuiReady = nullptr, g_semVsyncEnd = nullptr;
 
-// The RGB framebuffer (scanned out continuously). init_operations = nullptr: the
-// ST7701 init is done manually in panelInit().
-static Arduino_GFX* output = new Arduino_RGB_Display(
-  480, 480, rgbpanel, 0 /*rotation*/, true /*auto_flush*/,
-  nullptr /*no control bus*/, GFX_NOT_DEFINED, nullptr, 0);
+// IDF two-semaphore tear-free handshake. panelFlush() requests a flip, GIVES gui_ready,
+// then waits on vsync_end. on_vsync gives vsync_end ONLY on a vsync that occurs AFTER
+// gui_ready was set — so we always wait for a real post-flip vsync and never proceed (and
+// reuse a buffer) early. A single-semaphore version has a microscopic clear/give race that
+// surfaced as an occasional 1-line glitch at the very top; this closes it.
+static bool IRAM_ATTR onVsync(esp_lcd_panel_handle_t panel,
+                              const esp_lcd_rgb_panel_event_data_t *edata, void *user) {
+  BaseType_t hp = pdFALSE;
+  if (g_semGuiReady && xSemaphoreTakeFromISR(g_semGuiReady, &hp) == pdTRUE) {
+    xSemaphoreGiveFromISR(g_semVsyncEnd, &hp);
+  }
+  return hp == pdTRUE;
+}
+
+static bool rgbPanelInit() {
+  esp_lcd_rgb_panel_config_t cfg = {
+      .clk_src = LCD_CLK_SRC_DEFAULT,
+      .timings = {
+          .pclk_hz = PCLK_HZ, .h_res = 480, .v_res = 480,
+          .hsync_pulse_width = HSYNC_PW, .hsync_back_porch = HSYNC_BP, .hsync_front_porch = HSYNC_FP,
+          .vsync_pulse_width = VSYNC_PW, .vsync_back_porch = VSYNC_BP, .vsync_front_porch = VSYNC_FP,
+          .flags = { .hsync_idle_low = 0, .vsync_idle_low = 0, .de_idle_high = 0,
+                     .pclk_active_neg = PCLK_NEG, .pclk_idle_high = 0 },
+      },
+      .data_width = 16,
+      .bits_per_pixel = 16,
+      .num_fbs = 2,                       // <-- double framebuffer => tear-free VSYNC swap
+      .bounce_buffer_size_px = 480 * 40,  // <-- scan rides internal SRAM through the PSRAM write
+                                          //     burst (no flicker); 19200 divides 480*480 evenly
+      .sram_trans_align = 8,
+      .psram_trans_align = 64,
+      .hsync_gpio_num = LCD_HSYNC, .vsync_gpio_num = LCD_VSYNC,
+      .de_gpio_num = LCD_DE, .pclk_gpio_num = LCD_PCLK, .disp_gpio_num = GPIO_NUM_NC,
+      .data_gpio_nums = { LCD_B0, LCD_B1, LCD_B2, LCD_B3, LCD_B4,
+                          LCD_G0, LCD_G1, LCD_G2, LCD_G3, LCD_G4, LCD_G5,
+                          LCD_R0, LCD_R1, LCD_R2, LCD_R3, LCD_R4 },
+      .flags = { .disp_active_low = true, .refresh_on_demand = false, .fb_in_psram = true,
+                 .double_fb = false, .no_fb = false, .bb_invalidate_cache = true },
+  };
+  if (esp_lcd_new_rgb_panel(&cfg, &g_rgbPanel) != ESP_OK) return false;
+  // VSYNC semaphores + callback BEFORE init, so we catch flips from the first frame on.
+  g_semGuiReady = xSemaphoreCreateBinary();
+  g_semVsyncEnd = xSemaphoreCreateBinary();
+  esp_lcd_rgb_panel_event_callbacks_t cbs = {};
+  cbs.on_vsync = onVsync;
+  esp_lcd_rgb_panel_register_event_callbacks(g_rgbPanel, &cbs, nullptr);
+  esp_lcd_panel_reset(g_rgbPanel);
+  esp_lcd_panel_init(g_rgbPanel);
+  // Grab the two driver-owned framebuffers; we render STRAIGHT into the off-screen one
+  // (no canvas copy -> no per-frame PSRAM write burst -> no bandwidth-contention glitch).
+  esp_lcd_rgb_panel_get_frame_buffer(g_rgbPanel, 2, (void**)&g_fb0, (void**)&g_fb1);
+  g_drawFb = g_fb1;   // fb0 is the initially-scanned buffer; draw into fb1 first
+  return true;
+}
 
 // Double buffer. The eyes are drawn into this off-screen canvas, then flushed to
 // the scanned framebuffer in one pass per frame (panelFlush). Drawing the full
@@ -159,9 +225,15 @@ public:
     }
     return Arduino_Canvas::begin(speed);
   }
+  // Point the canvas at an EXTERNAL buffer (one of the esp_lcd framebuffers) so draw
+  // calls land straight in it — no separate canvas allocation, no flush memcpy.
+  void useFramebuffer(uint16_t* fb) { _framebuffer = fb; }
 };
 
-Arduino_GFX* gfx = new Arduino_Canvas_PSRAM(480, 480, output);
+// Off-screen draw target (PSRAM). output = nullptr: it is NOT flushed through an
+// Arduino_GFX output — panelFlush() hands it to the esp_lcd panel (copy + VSYNC swap).
+static Arduino_Canvas_PSRAM* g_canvas = new Arduino_Canvas_PSRAM(480, 480, nullptr);
+Arduino_GFX* gfx = g_canvas;   // draw.h draws through this Arduino_GFX*
 
 // ---- TCA9554 expander helpers (raw I2C) ----
 static uint8_t g_expOut = 0xFF;
@@ -208,11 +280,40 @@ static void panelInit() {
   pinMode(LCD_SDA, OUTPUT); digitalWrite(LCD_SDA, HIGH);
   st7701SendInit();                         // manual ST7701 init, CS toggled per command
 
-  gfx->begin(PCLK_HZ);                       // start the RGB scan-out
+  rgbPanelInit();                            // start the RGB scan-out (esp_lcd, 2 fbs, no bounce)
+  g_canvas->useFramebuffer(g_drawFb);        // draw straight into the off-screen FB (no copy)
+  g_canvas->begin();                         // init canvas state (FB already set -> no alloc)
 
   pinMode(LCD_BL, OUTPUT);
   digitalWrite(LCD_BL, HIGH);                // backlight on
 }
 
-// Push the off-screen canvas to the scanned RGB framebuffer. Once per frame.
-static inline void panelFlush() { gfx->flush(); }
+// Present the just-rendered off-screen framebuffer, then hand the canvas the OTHER one
+// for the next frame. The VSYNC handshake is the key: after asking esp_lcd to flip in
+// g_drawFb, we BLOCK until the flip actually happens, so by the time the next renderFrame
+// runs, g_drawFb points at a buffer that is no longer being scanned. No copy, no tearing,
+// no sideways desync. (Stale-give is cleared first so we wait for the RIGHT vsync.)
+static inline void panelFlush() {
+  // (draw_bitmap of a driver-owned FB already flushes its cache to PSRAM internally — do
+  //  NOT add a second esp_cache_msync here; that double PSRAM write burst re-triggers the
+  //  scan-out contention and the sideways desync.)
+  esp_lcd_panel_draw_bitmap(g_rgbPanel, 0, 0, 480, 480, g_drawFb);  // request flip at next vsync
+  xSemaphoreGive(g_semGuiReady);                                    // arm: signal me at the next vsync
+  xSemaphoreTake(g_semVsyncEnd, portMAX_DELAY);                     // wait until that (post-flip) vsync
+  g_drawFb = (g_drawFb == g_fb0) ? g_fb1 : g_fb0;                   // the other FB is now free
+  g_canvas->useFramebuffer(g_drawFb);
+}
+
+// Partial present: flip but flush only the vertical band [y0, y0+h). Everything outside it
+// is solid BG, primed into BOTH framebuffers once at boot (see setup) and never rewritten —
+// so this shrinks the per-frame PSRAM write burst that occasionally underran the scan FIFO
+// and left a black line at the top, WITHOUT a bounce buffer (which breaks num_fbs=2 here).
+// renderFrame still fills the whole back FB each frame, so the band stays self-consistent
+// across the two buffers. The handshake is identical to panelFlush().
+static inline void panelFlushRect(int y0, int h) {
+  esp_lcd_panel_draw_bitmap(g_rgbPanel, 0, y0, 480, y0 + h, g_drawFb);
+  xSemaphoreGive(g_semGuiReady);
+  xSemaphoreTake(g_semVsyncEnd, portMAX_DELAY);
+  g_drawFb = (g_drawFb == g_fb0) ? g_fb1 : g_fb0;
+  g_canvas->useFramebuffer(g_drawFb);
+}

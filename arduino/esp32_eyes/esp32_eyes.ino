@@ -122,8 +122,11 @@ void setup() {
   Serial.begin(115200);                                       // USB-CDC console (dev)
   LINK.begin(LINK_BAUD, SERIAL_8N1, LINK_RX_PIN, LINK_TX_PIN); // host link from the Uno Q
   panelInit();
-  gfx->fillScreen(pack565(BG));
-  panelFlush();
+  // Prime BOTH framebuffers to solid BG (two full flushes = one per FB). The loop then
+  // flushes only the face band; the static BG outside it must already be identical in both
+  // FBs or it would flicker between them.
+  gfx->fillScreen(pack565(BG)); panelFlush();
+  gfx->fillScreen(pack565(BG)); panelFlush();
   g_face = S_CLOCK; g_faceStart = millis();                   // standby = clock until the host speaks
   Serial.println("esp32_eyes ready — host link on Serial1; send S<n>, T<hh>:<mm>, or a raw state 0..12");
 }
@@ -146,7 +149,10 @@ void loop() {
   }
 
   renderFrame(g_face, now, g_faceStart);
-  panelFlush();                                 // push the finished frame to the panel
+  // Present only the band that holds the face/clock (eyes ~y140, mouth, clock, notepad
+  // bottom ~y456, bell). Outside it is static BG (primed in both FBs). Smaller flush =
+  // smaller PSRAM write burst = no scan-FIFO underrun = no occasional black line on top.
+  panelFlushRect(104, 360);                     // rows [104, 464)
 
   uint32_t dt = millis() - lastFrame;           // ~30 fps pacing
   if (dt < 33) delay(33 - dt);

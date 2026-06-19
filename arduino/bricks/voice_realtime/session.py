@@ -301,7 +301,14 @@ class VoiceSession:
                 elif event == "sentence":
                     logger.info(f"» {data.get('text', '')}")
                 elif event == "error":
+                    # Brain/LLM failed (e.g. Ollama 500 / llama-server segfault) — no
+                    # reply is coming, so show the "didn't catch that" face and stop
+                    # waiting. S_DIDNT_CATCH is a one-shot that chains to idle, so the
+                    # finally's S_IDLE is absorbed by the firmware until it plays out.
                     logger.error(f"brain error: {data.get('message')}")
+                    _light(S_DIDNT_CATCH)
+                    end_reason = "error"
+                    break
                 elif event == "speaking_end":
                     break
         except Exception as e:  # noqa: BLE001 — record WHY the stream ended (e.g. closed)
