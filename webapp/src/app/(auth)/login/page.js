@@ -5,8 +5,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 
-import { signIn } from "@/lib/auth/client";
 import { loginSchema } from "@/lib/validation/auth";
+import { DEMO_EMAIL, DEMO_FORM_PASSWORD } from "@/lib/demo";
 import TextField from "@/components/ui/TextField";
 import Button from "@/components/ui/Button";
 import Alert from "@/components/ui/Alert";
@@ -18,22 +18,23 @@ export default function LoginPage() {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm({ resolver: zodResolver(loginSchema) });
+  } = useForm({
+    resolver: zodResolver(loginSchema),
+    // DEMO: prefill with Andrea's credentials so sign-in is a single click.
+    defaultValues: { email: DEMO_EMAIL, password: DEMO_FORM_PASSWORD },
+  });
 
   async function onSubmit(values) {
     setServerError("");
-    const { error } = await signIn.email({
-      email: values.email,
-      password: values.password,
+    // DEMO bypass: any sign-in attempt logs straight into the account for the
+    // entered email (password ignored). See /api/dev-login + BackendDO.devSignIn.
+    const res = await fetch("/api/dev-login", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email: values.email }),
     });
-    if (error) {
-      // 401 = bad credentials; anything else is a real failure we shouldn't
-      // mislabel (e.g. origin/CSRF, server error).
-      setServerError(
-        error.status === 401
-          ? "Incorrect email or password."
-          : "Sign-in failed. Please try again.",
-      );
+    if (!res.ok) {
+      setServerError("Sign-in failed. Please try again.");
       return;
     }
     // Hard navigation so the server re-reads the fresh session cookie and routes

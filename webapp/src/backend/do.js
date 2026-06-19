@@ -11,6 +11,25 @@ import { newId, newToken, newPairingCode, hashSecret } from "../lib/ids.js";
 
 const PAIRING_TTL_MS = 10 * 60 * 1000;
 
+// DEMO ONLY — the fixed password devSignIn forces onto an account so a session
+// can be minted without the real one. Never used by the normal sign-in path.
+const DEMO_PASSWORD = "demo-login-please-change-0123456789";
+// Neutral demo identity shown in the account (overrides the real name on login).
+const DEMO_NAME = "Andrea Clarke";
+
+// pronouns / careContext are multi-select, stored as a JSON string. Decode
+// tolerantly so legacy single-string rows (pre multi-select) still read.
+function toList(v) {
+  if (v == null || v === "") return [];
+  if (Array.isArray(v)) return v;
+  try {
+    const parsed = JSON.parse(v);
+    return Array.isArray(parsed) ? parsed : [String(parsed)];
+  } catch {
+    return [v];
+  }
+}
+
 // A host is on the local network — trusted for CSRF in this prototype.
 function isPrivateHost(h) {
   return (
@@ -133,6 +152,136 @@ export class BackendDO extends DurableObject {
     return this.auth.api.getSession({ headers: new Headers(headers) });
   }
 
+  /**
+   * DEMO ONLY — frictionless sign-in for showcasing the app without a password.
+   * Forces a known password onto the account (creating it if it doesn't exist),
+   * then mints a real Better Auth session and returns its Set-Cookie header(s).
+   * The /api/dev-login route gates this to local/LAN (or a DEMO_LOGIN flag).
+   */
+  async devSignIn(email) {
+    const clean = String(email || "").trim().toLowerCase();
+    if (!clean) return { ok: false, error: "missing_email" };
+
+    let user = this.db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.email, clean))
+      .limit(1)
+      .all()[0];
+
+    if (!user) {
+      // No such account yet: create it via the normal sign-up path.
+      await this.auth.api.signUpEmail({
+        body: { email: clean, password: DEMO_PASSWORD, name: DEMO_NAME },
+      });
+      user = this.db
+        .select()
+        .from(schema.users)
+        .where(eq(schema.users.email, clean))
+        .limit(1)
+        .all()[0];
+    } else {
+      // Existing account: overwrite the credential password with the known one
+      // and normalise the display name to the neutral demo identity.
+      const ctx = await this.auth.$context;
+      const hash = await ctx.password.hash(DEMO_PASSWORD);
+      this.db
+        .update(schema.users)
+        .set({ name: DEMO_NAME, updatedAt: new Date() })
+        .where(eq(schema.users.id, user.id))
+        .run();
+      const acct = this.db
+        .select()
+        .from(schema.accounts)
+        .where(
+          and(
+            eq(schema.accounts.userId, user.id),
+            eq(schema.accounts.providerId, "credential"),
+          ),
+        )
+        .limit(1)
+        .all()[0];
+      const nowDate = new Date();
+      if (acct) {
+        this.db
+          .update(schema.accounts)
+          .set({ password: hash, updatedAt: nowDate })
+          .where(eq(schema.accounts.id, acct.id))
+          .run();
+      } else {
+        this.db
+          .insert(schema.accounts)
+          .values({
+            id: newId(),
+            userId: user.id,
+            accountId: user.id,
+            providerId: "credential",
+            password: hash,
+            createdAt: nowDate,
+            updatedAt: nowDate,
+          })
+          .run();
+      }
+    }
+
+    // Keep the demo account always "ready": onboarded + a profile, with the
+    // neutral demo greeting — so a demo sign-in never drops into onboarding.
+    if (user) {
+      const prof = this.db
+        .select()
+        .from(schema.onboardingProfiles)
+        .where(eq(schema.onboardingProfiles.userId, user.id))
+        .limit(1)
+        .all()[0];
+      if (!prof) {
+        await this.upsertOnboarding(
+          user.id,
+          {
+            preferredName: DEMO_NAME.split(" ")[0],
+            pronouns: ["They/Them"],
+            careContext: ["menopause"],
+            hormoneMethod: "gel",
+            stage: "few_months",
+            goals: [],
+            trackedSymptoms: [],
+            therapyStartDate: "",
+            language: "en",
+          },
+          true,
+        );
+      } else {
+        const nowDate = new Date();
+        this.db
+          .update(schema.onboardingProfiles)
+          .set({ preferredName: DEMO_NAME.split(" ")[0], updatedAt: nowDate })
+          .where(eq(schema.onboardingProfiles.userId, user.id))
+          .run();
+        this.db
+          .update(schema.users)
+          .set({ onboardingCompleted: true, updatedAt: nowDate })
+          .where(eq(schema.users.id, user.id))
+          .run();
+      }
+    }
+
+    const res = await this.auth.api.signInEmail({
+      body: { email: clean, password: DEMO_PASSWORD },
+      asResponse: true,
+    });
+    const cookies =
+      typeof res.headers.getSetCookie === "function"
+        ? res.headers.getSetCookie()
+        : [res.headers.get("set-cookie")].filter(Boolean);
+    return { ok: res.ok, cookies };
+  }
+
+  /** DEMO ONLY — drop all sessions so the browser's cookie stops authenticating
+   *  (used by the dev sign-out to show the login screen again). */
+  async devSignOutAll() {
+    this.db.delete(schema.sessions).run();
+    return { ok: true };
+  }
+
   // ---- Onboarding -----------------------------------------------------------
 
   async getOnboarding(userId) {
@@ -142,15 +291,21 @@ export class BackendDO extends DurableObject {
       .where(eq(schema.onboardingProfiles.userId, userId))
       .limit(1)
       .all();
-    return rows[0] ?? null;
+    const row = rows[0];
+    if (!row) return null;
+    return {
+      ...row,
+      pronouns: toList(row.pronouns),
+      careContext: toList(row.careContext),
+    };
   }
 
   async upsertOnboarding(userId, values, complete = false) {
     const nowDate = new Date();
     const payload = {
       preferredName: values.preferredName ?? null,
-      pronouns: values.pronouns || null,
-      careContext: values.careContext ?? null,
+      pronouns: JSON.stringify(values.pronouns ?? []),
+      careContext: JSON.stringify(values.careContext ?? []),
       hormoneMethod: values.hormoneMethod ?? null,
       stage: values.stage ?? null,
       goals: values.goals ?? [],
