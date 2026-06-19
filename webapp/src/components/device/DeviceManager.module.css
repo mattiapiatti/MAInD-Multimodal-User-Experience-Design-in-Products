@@ -46,88 +46,27 @@
   padding: 6px 4px;
 }
 
-/* pairing form */
-.pairForm {
+/* Pair Kai */
+.pairKai {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.pairKaiText {
+  flex: 1;
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: 14px;
 }
-.codeInput {
-  width: 100%;
-  text-align: center;
-  font-size: 30px;
-  font-weight: 700;
-  letter-spacing: 0.32em;
-  text-indent: 0.32em;
-  padding: 16px 12px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  background: var(--color-surface);
-  color: var(--color-fg);
-  text-transform: uppercase;
-}
-.codeInput::placeholder {
-  color: var(--color-fg-faint);
-  font-weight: 600;
-}
-.codeInput:focus {
-  outline: none;
-  border-color: var(--color-accent);
-}
-
-/* demo / simulated device */
-.demo {
-  margin-top: 18px;
-  padding-top: 16px;
-  border-top: 1px solid var(--color-border);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-}
-.demoLabel {
-  font-size: 13px;
+.pairKaiCopy {
+  font-size: 14px;
+  line-height: 1.45;
   color: var(--color-fg-muted);
 }
-
-.screenWrap {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-}
-/* circular device screen mock */
-.screen {
-  width: 184px;
-  height: 184px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 50% 38%, #11201d 0%, #060d0c 78%);
-  border: 6px solid #1c1c1e;
-  box-shadow:
-    0 10px 30px rgba(0, 0, 0, 0.28),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.04);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-}
-.screenHint {
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #6fb3a3;
-}
-.screenCode {
-  font-size: 34px;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-indent: 0.18em;
-  color: #e8fff7;
-}
-.screenSub {
-  font-size: 10.5px;
-  color: #5e6f6b;
+.pairKaiArt {
+  width: 116px;
+  flex-shrink: 0;
 }
 
 .note {

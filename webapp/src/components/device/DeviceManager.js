@@ -6,11 +6,8 @@ import { useRouter } from "next/navigation";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Alert from "@/components/ui/Alert";
-import {
-  claimCodeAction,
-  simulateDeviceAction,
-  removeDeviceAction,
-} from "@/app/(app)/device/actions";
+import { simulateDeviceAction, removeDeviceAction } from "@/app/(app)/device/actions";
+import KaiDevice from "./KaiDevice";
 import styles from "./DeviceManager.module.css";
 
 function formatDate(iso) {
@@ -28,44 +25,25 @@ function formatDate(iso) {
 
 export default function DeviceManager({ devices }) {
   const router = useRouter();
-  const [code, setCode] = useState("");
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
-  const [sim, setSim] = useState(null); // { code } shown on the simulated screen
 
   const hasDevice = devices.some((d) => d.status === "active");
 
-  async function pair(e) {
-    e?.preventDefault();
-    setError("");
-    setBusy("pair");
-    try {
-      const res = await claimCodeAction(code);
-      if (!res.ok) {
-        setError(
-          {
-            device_taken: "This device is already paired to another account.",
-            code_used: "That code was already used. Show a new one on the device.",
-            code_expired: "That code expired. Show a new one on the device.",
-            invalid_code: "Code not found. Check the 6 characters and try again.",
-          }[res.error] || "Pairing failed. Try again.",
-        );
-      } else {
-        setCode("");
-        setSim(null);
-        router.refresh();
-      }
-    } finally {
-      setBusy("");
-    }
-  }
-
-  async function simulate() {
+  async function pairKai() {
     setError("");
     setBusy("sim");
     try {
       const res = await simulateDeviceAction();
-      setSim({ code: res.code });
+      if (!res.ok) {
+        setError(
+          {
+            device_taken: "This device is already paired to another account.",
+          }[res.error] || "Pairing failed. Try again.",
+        );
+      } else {
+        router.refresh();
+      }
     } finally {
       setBusy("");
     }
@@ -116,54 +94,21 @@ export default function DeviceManager({ devices }) {
       {!hasDevice ? (
         <Card
           title="Pair a device"
-          subtitle="Your unit shows a 6-character code on its screen. Enter it here."
+          subtitle="Bring Kai online and link it to your account."
           padded
         >
           {error ? <Alert tone="error">{error}</Alert> : null}
 
-          <form className={styles.pairForm} onSubmit={pair}>
-            <input
-              className={styles.codeInput}
-              value={code}
-              onChange={(e) =>
-                setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6))
-              }
-              placeholder="ABC234"
-              inputMode="text"
-              autoCapitalize="characters"
-              autoComplete="off"
-              aria-label="Pairing code"
-              maxLength={6}
-            />
-            <Button
-              type="submit"
-              fullWidth
-              loading={busy === "pair"}
-              disabled={code.length !== 6}
-            >
-              Pair device
-            </Button>
-          </form>
-
-          <div className={styles.demo}>
-            <p className={styles.demoLabel}>No device yet?</p>
-            {sim ? (
-              <div className={styles.screenWrap}>
-                <div className={styles.screen} aria-label="Simulated device screen">
-                  <span className={styles.screenHint}>Pairing code</span>
-                  <span className={styles.screenCode}>{sim.code}</span>
-                  <span className={styles.screenSub}>enter it in the app</span>
-                </div>
-                <p className={styles.note}>
-                  This is what the round screen shows. Type the code above to
-                  pair.
-                </p>
-              </div>
-            ) : (
-              <Button variant="secondary" loading={busy === "sim"} onClick={simulate}>
-                Simulate a device
+          <div className={styles.pairKai}>
+            <div className={styles.pairKaiText}>
+              <p className={styles.pairKaiCopy}>
+                Kai is your voice companion. Tap to pair it with this account.
+              </p>
+              <Button loading={busy === "sim"} onClick={pairKai}>
+                Pair Kai
               </Button>
-            )}
+            </div>
+            <KaiDevice className={styles.pairKaiArt} />
           </div>
         </Card>
       ) : null}
