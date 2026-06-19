@@ -11,7 +11,7 @@ import SignOutButton from "@/components/SignOutButton";
 import { PersonIcon } from "@/components/shell/icons";
 import styles from "./settings.module.css";
 
-export const metadata = { title: "Settings" };
+export const metadata = { title: "Profile" };
 
 export default async function SettingsPage() {
   const user = await requireOnboardedUser();
@@ -19,8 +19,8 @@ export default async function SettingsPage() {
 
   const defaultValues = {
     preferredName: profile?.preferredName || "",
-    pronouns: profile?.pronouns || "",
-    careContext: profile?.careContext || undefined,
+    pronouns: profile?.pronouns || [],
+    careContext: profile?.careContext || [],
     hormoneMethod: profile?.hormoneMethod || undefined,
     stage: profile?.stage || undefined,
     goals: profile?.goals || [],
@@ -45,7 +45,7 @@ export default async function SettingsPage() {
   }
 
   return (
-    <Screen title="Settings">
+    <Screen title="Profile">
       <Card title="Account" padded>
         <div className={styles.account}>
           <div className={styles.avatar} aria-hidden="true">
@@ -62,9 +62,9 @@ export default async function SettingsPage() {
       </Card>
 
       <Card
-        title="Profile"
+        title="Health profile"
         icon={<PersonIcon />}
-        subtitle="Edit what you set during onboarding."
+        subtitle="What you set during onboarding."
         padded
       >
         <OnboardingForm

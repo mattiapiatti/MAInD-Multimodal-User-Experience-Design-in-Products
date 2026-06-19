@@ -9,10 +9,8 @@ export const CARE_CONTEXTS = [
   { value: "other", label: "Other" },
 ];
 
-// Preset pronoun choices shown in the selector. "Custom…" lets the user type
-// their own; "Prefer not to say" keeps it inclusive while staying required.
+// Pronoun choices shown as multi-select cards (a person may use more than one).
 export const PRONOUN_PRESETS = ["She/Her", "He/Him", "They/Them"];
-export const PRONOUN_PREFER_NOT = "Prefer not to say";
 
 // How the hormone/medication is taken.
 export const METHOD_OPTIONS = [
@@ -20,6 +18,7 @@ export const METHOD_OPTIONS = [
   { value: "injection", label: "Injection" },
   { value: "pill", label: "Pill" },
   { value: "patch", label: "Patch" },
+  { value: "other", label: "Other" },
   { value: "nothing", label: "Nothing" },
 ];
 
@@ -50,16 +49,20 @@ export const SYMPTOM_OPTIONS = [
 
 export const onboardingSchema = z.object({
   preferredName: z.string().trim().min(1, "Enter a name").max(60),
-  pronouns: z.string().trim().min(1, "Select your pronouns").max(60),
-  careContext: z.enum([
-    "gender_affirming",
-    "menopause",
-    "contraception",
-    "pmos",
-    "endometriosis",
-    "other",
-  ]),
-  hormoneMethod: z.enum(["gel", "injection", "pill", "patch", "nothing"]),
+  pronouns: z.array(z.string()).min(1, "Select your pronouns"),
+  careContext: z
+    .array(
+      z.enum([
+        "gender_affirming",
+        "menopause",
+        "contraception",
+        "pmos",
+        "endometriosis",
+        "other",
+      ]),
+    )
+    .min(1, "Select at least one"),
+  hormoneMethod: z.enum(["gel", "injection", "pill", "patch", "other", "nothing"]),
   stage: z.enum(["starting", "few_months", "further"]),
   goals: z.array(z.string()).default([]),
   trackedSymptoms: z.array(z.string()).default([]),

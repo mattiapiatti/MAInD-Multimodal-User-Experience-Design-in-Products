@@ -61,9 +61,13 @@ export async function GET() {
   });
   y -= 78;
 
-  // Profile
+  // Profile. careContext/pronouns are multi-select arrays (tolerate legacy strings).
+  const asList = (v) => (Array.isArray(v) ? v : v ? [v] : []);
   const careLabel =
-    CARE_CONTEXTS.find((c) => c.value === profile?.careContext)?.label || "—";
+    asList(profile?.careContext)
+      .map((v) => CARE_CONTEXTS.find((c) => c.value === v)?.label)
+      .filter(Boolean)
+      .join(", ") || "—";
   const methodLabel =
     METHOD_OPTIONS.find((m) => m.value === profile?.hormoneMethod)?.label || "—";
   const stageLabel =
@@ -72,7 +76,7 @@ export async function GET() {
   y -= 20;
   const rows = [
     ["Name", profile?.preferredName || user.name || "—"],
-    ["Pronouns", profile?.pronouns || "—"],
+    ["Pronouns", asList(profile?.pronouns).join(", ") || "—"],
     ["Hormones / therapy", careLabel],
     ["Method", methodLabel],
     ["Where they are", stageLabel],

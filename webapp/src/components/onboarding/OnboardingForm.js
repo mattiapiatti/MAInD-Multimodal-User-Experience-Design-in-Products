@@ -12,7 +12,6 @@ import {
   METHOD_OPTIONS,
   STAGE_OPTIONS,
   PRONOUN_PRESETS,
-  PRONOUN_PREFER_NOT,
 } from "@/lib/validation/onboarding";
 import TextField from "@/components/ui/TextField";
 import Button from "@/components/ui/Button";
@@ -74,49 +73,34 @@ function RadioCards({ options, value, onChange }) {
 }
 
 /**
- * Pronoun selector: preset cards + a "Custom…" card that reveals a free-text
- * field. The chosen string (preset, custom text, or "Prefer not to say") is what
- * gets stored. In edit mode a stored value that isn't a preset preselects Custom.
+ * Multi-select card list with a square checkbox indicator. Same card styling as
+ * RadioCards, but toggles values in/out of an array (a person may pick several).
  */
-function PronounSelect({ value = "", onChange }) {
-  const presetMatch = PRONOUN_PRESETS.includes(value) || value === PRONOUN_PREFER_NOT;
-  const [custom, setCustom] = useState(value !== "" && !presetMatch);
-
-  const Card = (label, active, onClick) => (
-    <button
-      type="button"
-      key={label}
-      className={`${styles.radioCard} ${active ? styles.radioActive : ""}`}
-      onClick={onClick}
-      aria-pressed={active}
-    >
-      <span className={styles.radioDot} aria-hidden="true" />
-      <span>{label}</span>
-    </button>
-  );
-
+function CheckCards({ options, value = [], onChange }) {
+  const set = new Set(value);
+  const toggle = (v) => {
+    const next = new Set(set);
+    next.has(v) ? next.delete(v) : next.add(v);
+    onChange([...next]);
+  };
   return (
     <div className={styles.radioList}>
-      {PRONOUN_PRESETS.map((p) =>
-        Card(p, !custom && value === p, () => {
-          setCustom(false);
-          onChange(p);
-        }),
-      )}
-      {Card("Custom…", custom, () => {
-        setCustom(true);
-        onChange("");
-      })}
-      {custom ? (
-        <TextField
-          placeholder="Type your pronouns"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-        />
-      ) : null}
-      {Card(PRONOUN_PREFER_NOT, !custom && value === PRONOUN_PREFER_NOT, () => {
-        setCustom(false);
-        onChange(PRONOUN_PREFER_NOT);
+      {options.map((opt) => {
+        const v = opt.value ?? opt;
+        const label = opt.label ?? opt;
+        const active = set.has(v);
+        return (
+          <button
+            type="button"
+            key={v}
+            className={`${styles.radioCard} ${active ? styles.radioActive : ""}`}
+            onClick={() => toggle(v)}
+            aria-pressed={active}
+          >
+            <span className={styles.checkDot} aria-hidden="true" />
+            <span>{label}</span>
+          </button>
+        );
       })}
     </div>
   );
@@ -125,8 +109,8 @@ function PronounSelect({ value = "", onChange }) {
 const STEPS = [
   { title: "What's your name", fields: ["preferredName", "pronouns"] },
   { title: "Your journey", fields: ["careContext"] },
-  { title: "Your therapy", fields: ["hormoneMethod", "stage"] },
-  { title: "What matters to you", fields: ["goals", "trackedSymptoms"] },
+  { title: "Your therapy", fields: ["hormoneMethod"] },
+  { title: "Where you are", fields: ["stage"] },
   { title: "Last details", fields: ["therapyStartDate", "language"] },
 ];
 
@@ -147,19 +131,21 @@ export default function OnboardingForm({
   const [step, setStep] = useState(0);
   const [serverError, setServerError] = useState("");
   const [saved, setSaved] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   const {
     register,
     handleSubmit,
     control,
     trigger,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(onboardingSchema),
     defaultValues: {
       preferredName: "",
-      pronouns: "",
-      careContext: undefined,
+      pronouns: [],
+      careContext: [],
       hormoneMethod: undefined,
       stage: undefined,
       goals: [],
@@ -188,6 +174,7 @@ export default function OnboardingForm({
       return;
     }
     setSaved(true);
+    setEditing(false);
   }
 
   // ---- field blocks, shown either per-step (wizard) or all at once (edit) ----
@@ -207,7 +194,11 @@ export default function OnboardingForm({
             control={control}
             name="pronouns"
             render={({ field }) => (
-              <PronounSelect value={field.value} onChange={field.onChange} />
+              <CheckCards
+                options={PRONOUN_PRESETS}
+                value={field.value}
+                onChange={field.onChange}
+              />
             )}
           />
           {errors.pronouns ? (
@@ -223,7 +214,7 @@ export default function OnboardingForm({
           control={control}
           name="careContext"
           render={({ field }) => (
-            <RadioCards
+            <CheckCards
               options={CARE_CONTEXTS}
               value={field.value}
               onChange={field.onChange}
@@ -231,7 +222,7 @@ export default function OnboardingForm({
           )}
         />
         {errors.careContext ? (
-          <span className={styles.err}>Select an option</span>
+          <span className={styles.err}>Select at least one</span>
         ) : null}
       </div>
     ),
@@ -336,16 +327,79 @@ export default function OnboardingForm({
   };
 
   if (!wizard) {
-    // Edit mode: everything in one scroll, single save.
+    // Edit mode: a compact read-only summary of what's selected, with an "Edit"
+    // button that reveals the full set of options; Save returns to the summary.
+    const v = watch();
+    const labelOf = (opts, val) =>
+      opts.find((o) => (o.value ?? o) === val)?.label ?? val;
+    const summaryRows = [
+      { label: "Name", text: v.preferredName },
+      { label: "Pronouns", text: (v.pronouns || []).join(", ") },
+      {
+        label: "Journey",
+        text: (v.careContext || []).map((x) => labelOf(CARE_CONTEXTS, x)).join(", "),
+      },
+      {
+        label: "How you take it",
+        text: v.hormoneMethod ? labelOf(METHOD_OPTIONS, v.hormoneMethod) : "",
+      },
+      {
+        label: "Where you are",
+        text: v.stage ? labelOf(STAGE_OPTIONS, v.stage) : "",
+      },
+      {
+        label: "Goals",
+        text: (v.goals || []).map((x) => labelOf(GOAL_OPTIONS, x)).join(", "),
+      },
+      { label: "Symptoms", text: (v.trackedSymptoms || []).join(", ") },
+      { label: "Therapy start", text: v.therapyStartDate },
+      { label: "Language", text: v.language === "it" ? "Italiano" : "English" },
+    ].filter((r) => r.text);
+
+    if (editing) {
+      return (
+        <form className={styles.form} onSubmit={handleSubmit(submit)} noValidate>
+          {serverError ? <Alert tone="error">{serverError}</Alert> : null}
+          {Object.values(blocks)}
+          <div className={styles.nav}>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setEditing(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" loading={isSubmitting}>
+              {submitLabel}
+            </Button>
+          </div>
+        </form>
+      );
+    }
+
     return (
-      <form className={styles.form} onSubmit={handleSubmit(submit)} noValidate>
-        {serverError ? <Alert tone="error">{serverError}</Alert> : null}
-        {saved ? <Alert tone="success">Changes saved.</Alert> : null}
-        {Object.values(blocks)}
-        <Button type="submit" fullWidth loading={isSubmitting}>
-          {submitLabel}
+      <div className={styles.form}>
+        {saved ? <Alert tone="success">Profile updated.</Alert> : null}
+        <dl className={styles.summary}>
+          {summaryRows.map((r) => (
+            <div className={styles.sumRow} key={r.label}>
+              <dt className={styles.sumLabel}>{r.label}</dt>
+              <dd className={styles.sumValue}>{r.text}</dd>
+            </div>
+          ))}
+        </dl>
+        <Button
+          type="button"
+          fullWidth
+          variant="secondary"
+          onClick={() => {
+            setSaved(false);
+            setEditing(true);
+          }}
+        >
+          Edit
         </Button>
-      </form>
+      </div>
     );
   }
 

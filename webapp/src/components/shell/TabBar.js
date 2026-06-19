@@ -3,13 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import styles from "./TabBar.module.css";
-import { HomeIcon, PulseIcon, SettingsIcon } from "./icons";
+import { HomeIcon, PulseIcon, PersonIcon } from "./icons";
 
-// Device management lives inside Settings now, so it no longer has its own tab.
+// Device management lives inside the profile now, so it has no separate tab.
 const TABS = [
   { href: "/home", label: "Home", Icon: HomeIcon },
   { href: "/insights", label: "Insights", Icon: PulseIcon },
-  { href: "/settings", label: "Settings", Icon: SettingsIcon },
+  { href: "/settings", label: "Profile", Icon: PersonIcon },
 ];
 
 export default function TabBar() {

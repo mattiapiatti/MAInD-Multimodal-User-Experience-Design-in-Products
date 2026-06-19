@@ -97,22 +97,14 @@ export const onboardingProfiles = sqliteTable("onboarding_profiles", {
 
   // Free-form display name the assistant uses.
   preferredName: text("preferred_name"),
-  // Pronouns the assistant should use (e.g. "she/her", "they/them").
+  // Pronouns (multi-select). Stored as a JSON string and decoded in the DO so
+  // legacy single-string rows (pre multi-select) still read.
   pronouns: text("pronouns"),
-  // Care context, one of a known set; drives the system prompt framing.
-  careContext: text("care_context", {
-    enum: [
-      "gender_affirming",
-      "menopause",
-      "contraception",
-      "pmos",
-      "endometriosis",
-      "other",
-    ],
-  }),
+  // Care context(s), multi-select. Stored as a JSON string, decoded in the DO.
+  careContext: text("care_context"),
   // How the hormone/medication is taken.
   hormoneMethod: text("hormone_method", {
-    enum: ["gel", "injection", "pill", "patch", "nothing"],
+    enum: ["gel", "injection", "pill", "patch", "other", "nothing"],
   }),
   // Where the person is in their therapy.
   stage: text("stage", { enum: ["starting", "few_months", "further"] }),
