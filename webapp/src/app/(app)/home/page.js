@@ -5,7 +5,8 @@ import { listDevices } from "@/lib/data/devices";
 import { getSummary, getTimeline } from "@/lib/mock/health";
 import Screen from "@/components/shell/Screen";
 import Card from "@/components/ui/Card";
-import { DeviceIcon, PulseIcon } from "@/components/shell/icons";
+import DeviceManager from "@/components/device/DeviceManager";
+import { PulseIcon } from "@/components/shell/icons";
 import styles from "./home.module.css";
 
 export const metadata = { title: "Home" };
@@ -19,6 +20,15 @@ export default async function HomePage() {
   const summary = getSummary();
   const timeline = getTimeline();
   const name = profile?.preferredName || user.name || "";
+
+  // Serializable device rows for the client DeviceManager.
+  const deviceRows = devices.map((d) => ({
+    id: d.id,
+    name: d.name,
+    status: d.status,
+    hardwareId: d.hardwareId,
+    pairedAt: d.pairedAt instanceof Date ? d.pairedAt.toISOString() : d.pairedAt,
+  }));
 
   return (
     <Screen title={`Hi${name ? `, ${name}` : ""}`}>
@@ -42,27 +52,9 @@ export default async function HomePage() {
         </p>
       </Card>
 
-      {devices.length === 0 ? (
-        <Link href="/device" className={styles.cta}>
-          <DeviceIcon className={styles.ctaIcon} aria-hidden="true" />
-          <div>
-            <strong>Pair your device</strong>
-            <span>Connect the voice unit to start talking to it.</span>
-          </div>
-        </Link>
-      ) : (
-        <Card title="Your device" padded>
-          <div className={styles.deviceRow}>
-            <span className={styles.deviceDot} data-status={devices[0].status} />
-            <div>
-              <strong>{devices[0].name || "Voice unit"}</strong>
-              <p className={styles.deviceMeta}>
-                {devices[0].status === "active" ? "Active" : "Revoked"}
-              </p>
-            </div>
-          </div>
-        </Card>
-      )}
+      <Card title="Device" subtitle="Pair and manage Kai." padded>
+        <DeviceManager devices={deviceRows} />
+      </Card>
 
       <Card
         title="Recent insights"

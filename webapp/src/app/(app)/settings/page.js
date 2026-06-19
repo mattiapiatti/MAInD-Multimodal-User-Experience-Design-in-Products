@@ -1,11 +1,9 @@
 import { requireOnboardedUser } from "@/lib/auth/guard";
 import { getOnboarding } from "@/lib/data/onboarding";
-import { listDevices } from "@/lib/data/devices";
 import { updateProfileAction } from "./actions";
 import Screen from "@/components/shell/Screen";
 import Card from "@/components/ui/Card";
 import OnboardingForm from "@/components/onboarding/OnboardingForm";
-import DeviceManager from "@/components/device/DeviceManager";
 import DangerZone from "@/components/settings/DangerZone";
 import SignOutButton from "@/components/SignOutButton";
 import { PersonIcon } from "@/components/shell/icons";
@@ -28,16 +26,6 @@ export default async function SettingsPage() {
     therapyStartDate: profile?.therapyStartDate || "",
     language: profile?.language || "it",
   };
-
-  // Plain serializable device rows for the client component.
-  const deviceRows = await listDevices(user.id);
-  const devices = deviceRows.map((d) => ({
-    id: d.id,
-    name: d.name,
-    status: d.status,
-    hardwareId: d.hardwareId,
-    pairedAt: d.pairedAt instanceof Date ? d.pairedAt.toISOString() : d.pairedAt,
-  }));
 
   async function handleSubmit(values) {
     "use server";
@@ -72,10 +60,6 @@ export default async function SettingsPage() {
           submitLabel="Save changes"
           onSubmit={handleSubmit}
         />
-      </Card>
-
-      <Card title="Device" subtitle="Pair and manage your voice unit." padded>
-        <DeviceManager devices={devices} />
       </Card>
 
       <Card

@@ -65,8 +65,14 @@
   color: var(--color-fg-muted);
 }
 .pairKaiArt {
-  width: 116px;
+  width: 132px;
   flex-shrink: 0;
+  line-height: 0;
+}
+.pairKaiArt img {
+  width: 100%;
+  height: auto;
+  display: block;
 }
 
 .note {

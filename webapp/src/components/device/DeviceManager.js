@@ -7,7 +7,6 @@ import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Alert from "@/components/ui/Alert";
 import { simulateDeviceAction, removeDeviceAction } from "@/app/(app)/device/actions";
-import KaiDevice from "./KaiDevice";
 import styles from "./DeviceManager.module.css";
 
 function formatDate(iso) {
@@ -108,7 +107,10 @@ export default function DeviceManager({ devices }) {
                 Pair Kai
               </Button>
             </div>
-            <KaiDevice className={styles.pairKaiArt} />
+            <div className={styles.pairKaiArt}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/kai.png" alt="Kai voice device" width={483} height={520} />
+            </div>
           </div>
         </Card>
       ) : null}
