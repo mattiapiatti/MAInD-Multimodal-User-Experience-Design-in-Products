@@ -8,10 +8,10 @@
     "Helvetica Neue", "Helvetica Now Display", Helvetica, Arial, sans-serif;
   --font-ui: "Helvetica Neue", Helvetica, Arial, sans-serif;
 
-  /* Brand / accent — calm clinical teal-green */
-  --color-accent: #0e7c66;
-  --color-accent-strong: #0a6151;
-  --color-accent-soft: #e6f3ef;
+  /* Brand / accent — mint green family (soft kept pale, just a greener hue) */
+  --color-accent: #2f8062;
+  --color-accent-strong: #266b50;
+  --color-accent-soft: #e6f3ec;
   --color-accent-fg: #ffffff;
 
   /* App surfaces — soft warm neutrals */
@@ -34,7 +34,7 @@
   --color-info-soft: #eef3fb;
 
   /* Chart palette (insights) */
-  --chart-1: #0e7c66;
+  --chart-1: #2f8062;
   --chart-2: #4a9cc7;
   --chart-3: #d98a3d;
   --chart-4: #9b6bc4;

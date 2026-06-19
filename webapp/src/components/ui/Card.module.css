@@ -21,7 +21,7 @@
 
 .icon {
   display: inline-flex;
-  color: var(--color-accent, #0e7c66);
+  color: var(--color-accent, #2f8062);
 }
 
 .icon svg {
