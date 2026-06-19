@@ -239,6 +239,19 @@ def _set_active(active: bool):
         mcu.set_light_state(S_OFF)   # halo off
 
 
+def _time_sync():
+    """Push the wall clock to the ESP32 face every 30s (and once now) so its
+    A4_clock — shown whenever listening is OFF — reads the real, NTP-synced time.
+    The MCU just forwards it; the Uno Q halo ignores it."""
+    while True:
+        t = time.localtime()
+        try:
+            mcu.set_time(t.tm_hour, t.tm_min, t.tm_sec)
+        except Exception as exc:  # noqa: BLE001 — a clock blip must never break the device
+            logger.warning(f"time sync failed: {exc}")
+        time.sleep(30)
+
+
 def _button_poll():
     """Poll the MCU button STATE and follow it: held = active, released = off.
     Only while idle (no conversation) so the request/response can't collide with a
@@ -272,5 +285,6 @@ pipeline.set_wake_mode(_wake_event, on_sleep=_on_pipeline_sleep)
 mcu.set_light_state(S_OFF)
 threading.Thread(target=_wake_watchdog, name="wake-watchdog", daemon=True).start()
 threading.Thread(target=_button_poll, name="button-poll", daemon=True).start()
+threading.Thread(target=_time_sync, name="time-sync", daemon=True).start()
 
 App.run()

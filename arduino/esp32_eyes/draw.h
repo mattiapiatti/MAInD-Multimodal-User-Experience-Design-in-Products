@@ -129,8 +129,23 @@ static void drawOpenMouth(const Pose& p) {
 // HH:MM in the real Arial Rounded Bold font (clockfont.h, generated from the macOS
 // TTF) — the rounded numerals match the reference. HH and MM are printed white and
 // centred; the colon is two dim-grey dots (as in the reference).
+//
+// Real time comes from the host over the link: setRealTime(hh,mm,ss) stamps the
+// wall-clock seconds-of-day against millis(); getTime() advances it locally and
+// the host re-syncs periodically so drift never accumulates. Until the first sync
+// arrives we fall back to a placeholder counter so the clock isn't blank.
+static bool     g_haveTime    = false;
+static uint32_t g_timeBaseSec = 0;     // wall-clock seconds-of-day at the last sync
+static uint32_t g_timeBaseMs  = 0;     // millis() at the last sync
+void setRealTime(int hh, int mm, int ss) {
+  g_timeBaseSec = ((uint32_t)hh * 3600 + (uint32_t)mm * 60 + (uint32_t)ss) % 86400UL;
+  g_timeBaseMs  = millis();
+  g_haveTime    = true;
+}
 static void getTime(uint8_t& hh, uint8_t& mm) {
-  uint32_t base = 10UL * 3600 + 8UL * 60, secs = base + millis() / 1000;
+  uint32_t secs;
+  if (g_haveTime) secs = (g_timeBaseSec + (millis() - g_timeBaseMs) / 1000) % 86400UL;
+  else            secs = (10UL * 3600 + 8UL * 60 + millis() / 1000) % 86400UL;  // pre-sync placeholder
   mm = (secs / 60) % 60; hh = (secs / 3600) % 24;
 }
 // print a string digit-by-digit with a fixed (tight) advance per character
@@ -138,6 +153,25 @@ static void printStr(const char* s, int x, int baseY, int step) {
   for (; *s; ++s) { gfx->setCursor(x, baseY); gfx->print(*s); x += step; }
 }
 static void drawClock() {
+  const int step = 72, digW = 70, gap = 40, bearing = 6;   // tight digits, symmetric colon gap
+  int hhW   = step + digW;                          // visible width of a 2-digit block (142)
+  int leftX = CXC - (2 * hhW + gap) / 2;            // visible left edge of HH:MM
+  int X0    = leftX - bearing;                      // HH cursor
+  int Xmm   = X0 + hhW + gap;                       // MM cursor
+
+  // Pre-sync: show a dim "--:--" rather than a confident-but-fake time. The clock
+  // font has no '-' glyph, so each dash is a bar; cleared the instant the host's
+  // first T<hh>:<mm> sync lands (g_haveTime).
+  if (!g_haveTime) {
+    uint16_t dim = C565(96, 104, 112);
+    const int dashW = 42, dashH = 12, dr = 6;
+    int cx[4] = { X0 + digW / 2, X0 + step + digW / 2, Xmm + digW / 2, Xmm + step + digW / 2 };
+    for (int i = 0; i < 4; i++) gfx->fillRoundRect(cx[i] - dashW / 2, CYC - dashH / 2, dashW, dashH, dr, dim);
+    gfx->fillCircle(CXC, CYC - 26, 11, dim);
+    gfx->fillCircle(CXC, CYC + 26, 11, dim);
+    return;
+  }
+
   uint8_t hh, mm; getTime(hh, mm);
   char sh[4], sm[4];
   snprintf(sh, sizeof(sh), "%02u", hh);
@@ -145,11 +179,6 @@ static void drawClock() {
   gfx->setFont(&Arial_Rounded_Bold72pt7b);
   gfx->setTextSize(1);
   gfx->setTextColor(COL_FACE);
-  const int step = 72, digW = 70, gap = 40, bearing = 6;   // tight digits, symmetric colon gap
-  int hhW   = step + digW;                          // visible width of a 2-digit block (142)
-  int leftX = CXC - (2 * hhW + gap) / 2;            // visible left edge of HH:MM
-  int X0    = leftX - bearing;                      // HH cursor
-  int Xmm   = X0 + hhW + gap;                       // MM cursor
   int16_t bx, by; uint16_t bw, bh;
   gfx->getTextBounds("8", 0, 0, &bx, &by, &bw, &bh);
   int baseY = CYC - by - (int)bh / 2;               // baseline -> glyph block centred at CYC
@@ -157,10 +186,9 @@ static void drawClock() {
   printStr(sm, Xmm, baseY, step);
   gfx->setFont(NULL);
   // colon: two dots centred in the (symmetric) gap, blink WHITE <-> grey
-  int cxx = CXC;
   uint16_t cc = ((millis() % 1000) < 550) ? COL_FACE : C565(74, 80, 88);
-  gfx->fillCircle(cxx, CYC - 26, 11, cc);
-  gfx->fillCircle(cxx, CYC + 26, 11, cc);
+  gfx->fillCircle(CXC, CYC - 26, 11, cc);
+  gfx->fillCircle(CXC, CYC + 26, 11, cc);
 }
 
 // ---------------------------------------------------------------- check (white) C1

@@ -55,11 +55,46 @@ arduino-cli upload  -b "$FQBN" -p /dev/cu.usbmodem201301 esp32_eyes
 In the Arduino IDE the equivalent is *ESP32S3 Dev Module* with **PSRAM = OPI**
 (required — the framebuffers live in PSRAM), **Flash 16MB**, **USB CDC On Boot = Enabled**.
 
-## Driving it
+## Driving it — the host link
 
-- **Auto (default):** power on → Wake → Idle → Clock after 5 min → (demo auto-wake) → Listening → face.
-- **UART** (USB Serial @115200, one line per command):
-  `0`…`12` pin a state · `wake` · `resume`/`auto` · `next` · `spd <f>`.
+The face **tracks the live conversation**: the Uno Q forwards the host's state stream
+(`set_light_state`) to this board over a hardware UART, so face + halo move together.
+Use the board's **4-pin UART header** (silkscreen `TXD RXD GND 3V3` = GPIO43/GPIO44,
+confirmed in the Waveshare docs). Wire **crossed**, share GND, leave 3V3 unconnected:
+
+```
+Uno Q TX  ──▶ ESP32 header "RXD" (GPIO44, LINK_RX_PIN)
+Uno Q RX  ◀── ESP32 header "TXD" (GPIO43, LINK_TX_PIN)     Link = Serial1 @ 115200 8N1
+Uno Q GND ◀─▶ ESP32 header "GND"
+```
+
+Leave the board's *UART* Type-C port unplugged (it mux-disables the header); power/flash
+via the other (USB) Type-C port.
+
+**Protocol** — one line per message, accepted on the host link *and* USB Serial (dev):
+
+| line | meaning |
+|------|---------|
+| `S<n>` | **semantic** light-state event 0…12 (a host `set_light_state`) — *face policy applied* |
+| `T<hh>:<mm>[:<ss>]` | wall-clock time sync (host NTP time) → drives `A4_clock` |
+| `<n>` | **raw** state 0…12 — pin a state directly (dev preview, no policy) |
+| `wake` · `resume`/`auto` · `next` · `spd <f>` | dev helpers |
+
+**Event flow** (driven by the host stream; the button reaches the face *through* it):
+
+```
+button released → S0  → CLOCK (standby, real time)
+button pressed  → S2  → WAKE animation ──▶ IDLE / waiting
+"hey kay"       → S10 → WAKEWORD ──▶ LISTENING (mic open)
+mic closes      → S6  → THINKING (until the server replies)
+reply audio     → S4  → SPEAKING
+turn ends       → S2  → IDLE  (loop)
+```
+
+The two device-specific mappings (the only places the face differs from the halo)
+live in `onLightState()`: **off → clock** (not a dark screen) and **first wake-up out
+of the clock plays `A2_wake`**. One-shot chaining (`A2_wake→idle`, `D2_wakeword→listening`)
+is handled on-device, so the host need only send the same ints it already sends the halo.
 
 ## Bring-up notes — why this board is tricky (read before changing panel_config.h)
 
@@ -99,8 +134,9 @@ wrong colours → RGB/BGR order.
 
 ## TODO
 
-- **Wire the host link:** feed the same state int the Linux core sends the Uno Q
-  (`set_light_state`) to this board's UART so the face tracks the conversation.
-- **Real clock:** `getTime()` in draw.h is a placeholder counter (regenerate
-  `clockfont.h` from SFNSRounded.ttf if you want SF Pro Rounded instead of Arial).
+- **Link pins are set both sides:** ESP32 GPIO44/43 (`RXD`/`TXD` header) ↔ Uno Q
+  `Serial1` = D0(RX)/D1(TX). Button stays on Uno Q D2 — no conflict.
+- **Real clock:** now host-synced (`T<hh>:<mm>:<ss>` → `setRealTime()` in draw.h); shows
+  a placeholder until the first sync. Regenerate `clockfont.h` from SFNSRounded.ttf if
+  you want SF Pro Rounded instead of Arial.
 - **Touch** (GT911 @ 0x5D, INT=GPIO16, RST=EXIO1) is wired on the board but unused.

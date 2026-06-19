@@ -99,6 +99,12 @@ def set_light_state(state: int):
     _notify("set_light_state", [state])
 
 
+def set_time(hh: int, mm: int, ss: int):
+    # Fire-and-forget wall-clock sync. The MCU has no use for it — it just forwards
+    # "T<hh>:<mm>:<ss>" to the ESP32 face so its A4_clock shows the real time.
+    _notify("set_time", [hh, mm, ss])
+
+
 def get_button():
     """Running count of debounced button presses on the MCU, or None on failure.
     Poll only while idle (no conversation) so the request/response can't collide

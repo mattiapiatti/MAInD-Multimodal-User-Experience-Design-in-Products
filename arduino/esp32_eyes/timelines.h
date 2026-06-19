@@ -162,7 +162,7 @@ static const StateDef STATES[NUM_STATES] = {
   { "B2_listening", MODE_LOOP,    7000,  100,   0xFF, 5,  b2_tr,     OV_NOTEPAD, false },
   { "B3_thinking",  MODE_LOOP,    2000,  100,   0xFF, 3,  b3_tr,     OV_NONE,    false },
   { "C1_confirm",   MODE_ONESHOT, 2400,   92,   0xFF, 3,  c1_tr,     OV_NONE,    false },
-  { "C2_didnt_catch", MODE_ONESHOT, 1800, 100,  0xFF, 3,  c2_tr,     OV_NONE,    false },
+  { "C2_didnt_catch", MODE_ONESHOT, 1800, 100,    2,   3,  c2_tr,     OV_NONE,    false },
   { "D1_reminder",  MODE_ONESHOT, 3200,   94,    4,   3,  d1_tr,     OV_NONE,    false },
   { "D2_wakeword",  MODE_ONESHOT, 3400,   30,    5,   9,  d2_tr,     OV_NONE,    false },
   { "E2_quirk",     MODE_ONESHOT, 4200,   35,   0xFF, 3,  e2_tr,     OV_NONE,    false },

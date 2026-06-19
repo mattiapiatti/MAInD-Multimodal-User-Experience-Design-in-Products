@@ -8,6 +8,24 @@
 
 Adafruit_NeoPixel strip(NEO_COUNT, NEO_PIN, NEO_GRB + NEO_KHZ800);
 
+// ---- ESP32 face link (host state stream forwarded over UART) -----------------
+// The eyes/faces live on a SEPARATE ESP32 (arduino/esp32_eyes). We mirror the
+// host's conversation stream to it so the face tracks the talk: every
+// set_light_state(n) is forwarded as "S<n>", and set_time(h,m,s) as "T<hh>:<mm>:<ss>".
+// Link = Serial1 = D0(RX)/D1(TX) on the Uno Q (the button stays on D2, untouched).
+// Only D1(TX) carries data — the Uno Q never reads back. TX/RX are CROSSED to the
+// ESP32's 4-pin UART header (share GND):
+//     Uno Q D1 (TX) -> ESP32 "RXD" (GPIO44)
+//     Uno Q D0 (RX) <- ESP32 "TXD" (GPIO43)
+// Forwarding is done from loop() (never from an RPC handler) so a Serial1 write can
+// never overlap a NeoPixel show() and corrupt a frame. Serial1 TX does not mask
+// IRQs, so it can't drop an in-flight bridge byte either.
+#define ESP_LINK      Serial1
+#define ESP_LINK_BAUD 115200
+volatile bool linkStateDirty = false;            // setLightState -> forward "S<n>"
+volatile bool linkTimeDirty  = false;            // setTime       -> forward "T<hh>:<mm>:<ss>"
+volatile int  linkTimeH = 0, linkTimeM = 0, linkTimeS = 0;
+
 // ---- Activation button -------------------------------------------------------
 // A Cherry MX switch (2 pins = a plain momentary contact): one pin to D2, the
 // other to GND. INPUT_PULLUP means the pin reads HIGH when released, LOW when
@@ -60,7 +78,7 @@ static int lightModeForState(int s) {
 static const float WARM_R = 255, WARM_G = 168, WARM_B = 82;
 static const float COOL_R = 96,  COOL_G = 196, COOL_B = 255;
 
-int   curState   = S_A3_IDLE;
+volatile int curState = S_A3_IDLE;   // volatile: written in the RPC ctx, read/forwarded in loop()
 int   lightMode  = L_IDLE;
 unsigned long lastNeoRenderMs = 0;  // ring render cadence
 // strip.show() masks IRQs ~0.7ms and would drop a serial RPC byte if it ran while
@@ -98,6 +116,15 @@ void setLightState(int state) {
   if (state == curState) return;
   curState  = state;
   lightMode = lightModeForState(state);
+  linkStateDirty = true;            // forward "S<state>" to the ESP32 face from loop()
+}
+
+// Host time sync (the Linux core has NTP time). Forwarded verbatim to the ESP32 so
+// its A4_clock shows the real time; the Uno Q itself has no use for it.
+void setTime(int hh, int mm, int ss) {
+  lastRpcMs = millis();
+  linkTimeH = hh; linkTimeM = mm; linkTimeS = ss;
+  linkTimeDirty = true;
 }
 
 void renderNeopixel() {
@@ -291,12 +318,15 @@ void setup() {
 
   pinMode(BUTTON_PIN, INPUT_PULLUP);  // Cherry switch: D2 ↔ GND, pressed = LOW
 
+  ESP_LINK.begin(ESP_LINK_BAUD);      // forward the state stream to the ESP32 face
+
   Bridge.begin();
   Bridge.provide("set_color",           setLedColor);
   Bridge.provide("set_wake_word_state", setWakeWordState);
   Bridge.provide("set_voice_state",     setVoiceState);
   Bridge.provide("set_audio_level",     setAudioLevel);
   Bridge.provide("set_light_state",     setLightState);
+  Bridge.provide("set_time",            setTime);
   Bridge.provide("get_button",          getButton);
 }
 
@@ -304,6 +334,22 @@ void loop() {
   unsigned long now = millis();
 
   pollButton();  // debounce + count presses (Linux polls the count when idle)
+
+  // Heartbeat: re-assert the current face state every few seconds so an ESP32 that
+  // reset on its own (brownout / reflash) re-syncs to the live conversation instead
+  // of sitting on its power-on CLOCK default. A repeat of the same state is a no-op
+  // on the ESP32 (setFace ignores re-entry), so this is invisible in normal use.
+  static unsigned long lastHeartbeat = 0;
+  if (now - lastHeartbeat >= 3000) { lastHeartbeat = now; linkStateDirty = true; }
+
+  // Forward the host stream to the ESP32 face (from loop() so it can't overlap a
+  // NeoPixel show()). Drained once per loop: a state change -> "S<n>", a time
+  // sync -> "T<hh>:<mm>:<ss>". One line each, '\n'-terminated.
+  if (linkStateDirty) { linkStateDirty = false; ESP_LINK.print('S'); ESP_LINK.println(curState); }
+  if (linkTimeDirty)  { linkTimeDirty  = false;
+    char t[16]; snprintf(t, sizeof(t), "T%02d:%02d:%02d", linkTimeH, linkTimeM, linkTimeS);
+    ESP_LINK.println(t);
+  }
 
   // Decay audio level if no update for 150 ms
   if (audioLevel > 0 && now - lastAudioLevelUpdate > 150)
