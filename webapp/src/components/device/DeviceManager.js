@@ -109,7 +109,7 @@ export default function DeviceManager({ devices }) {
             </div>
             <div className={styles.pairKaiArt}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/kai.png" alt="Kai voice device" width={483} height={520} />
+              <img src="/kai.png" alt="Kai voice device" width={521} height={560} />
             </div>
           </div>
         </Card>
