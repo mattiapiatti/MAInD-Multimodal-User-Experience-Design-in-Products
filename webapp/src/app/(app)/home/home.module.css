@@ -32,9 +32,10 @@
   align-items: flex-start;
   gap: 7px;
 }
-.face {
+.faceSlot {
   grid-column: 2;
   grid-row: 1;
+  align-self: start;
 }
 
 .eyebrow {
@@ -73,20 +74,6 @@
   flex: none;
 }
 
-.face {
-  width: 62px;
-  height: 62px;
-  flex: none;
-  border-radius: 21px;
-  background: radial-gradient(circle at 38% 30%, #2c332f, #0b0f0e);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.18),
-    0 6px 16px rgba(0, 0, 0, 0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
 
 /* Talk to Kai pill spans both columns under the head */
 .talk {

@@ -3,6 +3,7 @@ import { getOnboarding } from "@/lib/data/onboarding";
 import { updateProfileAction } from "./actions";
 import Screen from "@/components/shell/Screen";
 import Card from "@/components/ui/Card";
+import Avatar from "@/components/ui/Avatar";
 import OnboardingForm from "@/components/onboarding/OnboardingForm";
 import DangerZone from "@/components/settings/DangerZone";
 import SignOutButton from "@/components/SignOutButton";
@@ -36,10 +37,7 @@ export default async function SettingsPage() {
     <Screen title="Profile">
       <Card title="Account" padded>
         <div className={styles.account}>
-          <div className={styles.avatar} aria-hidden="true">
-            <span className={styles.avatarHighlight} />
-            <span className={styles.avatarHighlightCool} />
-          </div>
+          <Avatar />
           <div className={styles.accountInfo}>
             <strong>{user.name || "—"}</strong>
             <span>{user.email}</span>

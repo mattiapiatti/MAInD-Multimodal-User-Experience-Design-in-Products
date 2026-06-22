@@ -6,6 +6,7 @@ import { getSummary, getTimeline } from "@/lib/mock/health";
 import Screen from "@/components/shell/Screen";
 import Card from "@/components/ui/Card";
 import DeviceManager from "@/components/device/DeviceManager";
+import Avatar from "@/components/ui/Avatar";
 import { PulseIcon } from "@/components/shell/icons";
 import TalkButton from "./TalkButton";
 import styles from "./home.module.css";
@@ -51,19 +52,7 @@ export default async function HomePage() {
             <span className={styles.eyebrow}>{greeting}</span>
             <h1 className={styles.heroTitle}>Hi{name ? `, ${name}` : ""}</h1>
           </div>
-          <div className={styles.face} aria-hidden="true">
-            <svg width="42" height="42" viewBox="0 0 100 100" fill="none">
-              <circle cx="36" cy="42" r="6.5" fill="#fff" />
-              <circle cx="64" cy="42" r="6.5" fill="#fff" />
-              <path
-                d="M33 61 Q50 79 67 61"
-                stroke="#fff"
-                strokeWidth="6"
-                strokeLinecap="round"
-                fill="none"
-              />
-            </svg>
-          </div>
+          <Avatar size={62} className={styles.faceSlot} />
 
           <TalkButton />
         </div>
