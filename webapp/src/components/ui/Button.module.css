@@ -37,37 +37,40 @@
 }
 
 .primary {
-  background: var(--color-accent);
-  color: var(--color-accent-fg);
+  background: linear-gradient(180deg, #3a9b78, #2a6f54);
+  color: #ffffff;
+  box-shadow: 0 8px 20px rgba(20, 60, 45, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 .primary:active:not(:disabled) {
-  background: var(--color-accent-strong);
+  transform: scale(0.98);
 }
 
 .secondary {
-  background: var(--color-surface);
+  background: rgba(255, 255, 255, 0.06);
   color: var(--color-fg);
-  border-color: var(--color-border);
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow: var(--glass-highlight);
 }
 .secondary:active:not(:disabled) {
-  background: var(--color-inset);
+  transform: scale(0.98);
 }
 
 .ghost {
   background: transparent;
-  color: var(--color-accent);
+  color: var(--color-accent-bright);
 }
 .ghost:active:not(:disabled) {
   background: var(--color-accent-soft);
 }
 
 .danger {
-  background: var(--color-surface);
+  background: var(--color-danger-soft);
   color: var(--color-danger);
-  border-color: #f0c9c4;
+  border-color: var(--color-danger-border);
 }
 .danger:active:not(:disabled) {
-  background: var(--color-danger-soft);
+  transform: scale(0.98);
 }
 
 .spinner {

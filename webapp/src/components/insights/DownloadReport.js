@@ -29,9 +29,9 @@ export default function DownloadReport() {
   }
 
   return (
-    <Button variant="secondary" fullWidth loading={busy} onClick={download}>
+    <Button variant="primary" fullWidth loading={busy} onClick={download}>
       <DownloadIcon width={18} height={18} aria-hidden="true" />
-      Download the appointment PDF
+      Download PDF
     </Button>
   );
 }

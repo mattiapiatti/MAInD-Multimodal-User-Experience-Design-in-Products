@@ -8,21 +8,21 @@
 
 .error {
   background: var(--color-danger-soft);
-  color: #8e2a20;
-  border: 1px solid #f5c6c0;
+  color: var(--color-danger);
+  border: 1px solid var(--color-danger-border);
 }
 .success {
   background: var(--color-success-soft);
-  color: #1e6b3c;
-  border: 1px solid #bfe3cc;
+  color: var(--color-success);
+  border: 1px solid rgba(120, 220, 165, 0.4);
 }
 .info {
   background: var(--color-info-soft);
   color: var(--color-info);
-  border: 1px solid #cdddf0;
+  border: 1px solid rgba(120, 180, 230, 0.4);
 }
 .warning {
   background: var(--color-warning-soft);
-  color: #8a6508;
-  border: 1px solid #ecd9a6;
+  color: var(--color-warning);
+  border: 1px solid rgba(240, 199, 95, 0.4);
 }

@@ -14,7 +14,7 @@ function formatDate(iso) {
   try {
     return new Date(iso).toLocaleDateString("en-GB", {
       day: "numeric",
-      month: "long",
+      month: "short",
       year: "numeric",
     });
   } catch {
@@ -62,21 +62,26 @@ export default function DeviceManager({ devices }) {
   return (
     <>
       {devices.length > 0 ? (
-        <Card title="Paired devices" padded>
-          <ul className={styles.list}>
-            {devices.map((d) => (
-              <li key={d.id} className={styles.item}>
-                <span
-                  className={styles.dot}
-                  data-status={d.status}
-                  aria-hidden="true"
-                />
-                <div className={styles.itemBody}>
-                  <strong>{d.name || "Voice unit"}</strong>
-                  <span className={styles.meta}>
-                    {d.hardwareId} · since {formatDate(d.pairedAt)}
+        <ul className={styles.list}>
+          {devices.map((d) => (
+            <li key={d.id} className={styles.deviceCard}>
+              <div className={styles.itemBody}>
+                <strong>{d.name || "Kai"}</strong>
+                <div className={styles.statusRow}>
+                  <span
+                    className={styles.dot}
+                    data-status={d.status}
+                    aria-hidden="true"
+                  />
+                  <span className={styles.statusLabel}>
+                    {d.status === "active"
+                      ? "Connected · listening"
+                      : "Not paired · tap to set up"}
                   </span>
                 </div>
+                <span className={styles.meta}>
+                  {d.hardwareId} · since {formatDate(d.pairedAt)}
+                </span>
                 <button
                   className={styles.unlink}
                   onClick={() => remove(d.id)}
@@ -84,10 +89,14 @@ export default function DeviceManager({ devices }) {
                 >
                   Unpair
                 </button>
-              </li>
-            ))}
-          </ul>
-        </Card>
+              </div>
+              <div className={styles.deviceArt}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/kai.png" alt="Kai voice device" width={521} height={560} />
+              </div>
+            </li>
+          ))}
+        </ul>
       ) : null}
 
       {!hasDevice ? (

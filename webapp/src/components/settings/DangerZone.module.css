@@ -9,15 +9,20 @@
   justify-content: space-between;
   gap: 14px;
 }
+.row + .row {
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
 .text {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   min-width: 0;
 }
 .text strong {
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
+  color: var(--color-fg);
 }
 .text span {
   font-size: 12px;

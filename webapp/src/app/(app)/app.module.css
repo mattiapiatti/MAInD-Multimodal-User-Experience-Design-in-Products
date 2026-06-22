@@ -6,7 +6,6 @@
   width: 100%;
   max-width: var(--content-max);
   margin: 0 auto;
-  background: var(--color-bg);
-  /* Soft edges to read as a phone column on wide screens. */
-  box-shadow: 0 0 0 1px var(--color-border);
+  /* Transparent so the global liquid-glass orb backdrop shows through. */
+  background: transparent;
 }

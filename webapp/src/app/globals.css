@@ -1,6 +1,8 @@
-/* Design tokens — adapted from the ARTVERSE platform, retuned for a calm,
-   healthcare-oriented mobile app. Same Swiss-grotesque base, warmer surfaces,
-   a teal/green wellness accent instead of pure black. */
+/* Design tokens — "Liquid Glass" dark theme (from claude.ai/design handoff).
+   Deep green-black backdrop with animated glow orbs, frosted-glass surfaces,
+   mint accents. The same CSS variables drive the whole app, so screens that
+   read these tokens get the new look for free; glass surfaces add backdrop blur
+   in their own modules. */
 
 :root {
   /* Typography — system grotesque stack (no licensed font shipped here). */
@@ -8,33 +10,44 @@
     "Helvetica Neue", "Helvetica Now Display", Helvetica, Arial, sans-serif;
   --font-ui: "Helvetica Neue", Helvetica, Arial, sans-serif;
 
-  /* Brand / accent — mint green family (soft kept pale, just a greener hue) */
-  --color-accent: #2f8062;
-  --color-accent-strong: #266b50;
-  --color-accent-soft: #e6f3ec;
+  /* Brand / accent — mint green on dark */
+  --color-accent: #2f8062; /* primary button base */
+  --color-accent-strong: #266b50; /* pressed / gradient end */
+  --color-accent-bright: #8fe9bd; /* accent text, links, active nav, numbers */
+  --color-accent-soft: rgba(120, 220, 165, 0.16); /* active pill / soft fill */
   --color-accent-fg: #ffffff;
 
-  /* App surfaces — soft warm neutrals */
-  --color-bg: #f4f5f4;
-  --color-surface: #ffffff;
-  --color-inset: #eef0ef;
-  --color-border: #e3e5e3;
-  --color-fg: #1a1c1b;
-  --color-fg-muted: #6b6f6d;
-  --color-fg-faint: #9aa09d;
+  /* App surfaces — frosted glass over the dark backdrop */
+  --color-bg: #070c0a;
+  --color-surface: rgba(255, 255, 255, 0.055);
+  --color-inset: rgba(255, 255, 255, 0.06);
+  --color-border: rgba(255, 255, 255, 0.12);
+  --color-fg: #ffffff;
+  --color-fg-muted: rgba(255, 255, 255, 0.55);
+  --color-fg-faint: rgba(255, 255, 255, 0.4);
 
-  /* States */
-  --color-danger: #c0392b;
-  --color-danger-soft: #fdecea;
-  --color-success: #1e7e44;
-  --color-success-soft: #e9f6ee;
-  --color-warning: #b8860b;
-  --color-warning-soft: #fbf3e0;
-  --color-info: #2a4a73;
-  --color-info-soft: #eef3fb;
+  /* Glass recipe */
+  --glass-bg: rgba(255, 255, 255, 0.055);
+  --glass-blur: blur(26px) saturate(160%);
+  --glass-shadow: 0 12px 32px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  --glass-shadow-sm: 0 10px 26px rgba(0, 0, 0, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+
+  /* States (tuned for dark) */
+  --color-danger: #ff9d93;
+  --color-danger-soft: rgba(214, 90, 80, 0.16);
+  --color-danger-border: rgba(214, 90, 80, 0.4);
+  --color-success: #8fe9bd;
+  --color-success-soft: rgba(120, 220, 165, 0.16);
+  --color-warning: #f0c75f;
+  --color-warning-soft: rgba(240, 199, 95, 0.16);
+  --color-info: #9fcaf0;
+  --color-info-soft: rgba(120, 180, 230, 0.16);
 
   /* Chart palette (insights) */
-  --chart-1: #2f8062;
+  --chart-1: #5fd6a0;
   --chart-2: #4a9cc7;
   --chart-3: #d98a3d;
   --chart-4: #9b6bc4;
@@ -46,18 +59,18 @@
   --gap-lg: 24px;
   --gap-xl: 40px;
 
-  /* Radius */
-  --radius-sm: 8px;
-  --radius: 12px;
-  --radius-lg: 18px;
-  --radius-card: 16px;
-  --radius-field: 12px;
+  /* Radius — softer, glassier */
+  --radius-sm: 12px;
+  --radius: 18px;
+  --radius-lg: 24px;
+  --radius-card: 28px;
+  --radius-field: 16px;
   --radius-pill: 999px;
 
-  /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow: 0 4px 16px rgba(0, 0, 0, 0.07);
-  --shadow-up: 0 -2px 14px rgba(0, 0, 0, 0.06);
+  /* Shadows (dark) */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  --shadow-up: 0 -8px 30px rgba(0, 0, 0, 0.4);
 
   /* Z-index */
   --z-nav: 100;
@@ -68,9 +81,27 @@
   /* Mobile shell metrics */
   --tabbar-h: 64px;
   --topbar-h: 56px;
-  --content-max: 480px;
+  --content-max: 430px;
 
   --transition: 0.2s ease;
+}
+
+/* Background orb drift + listening ping (used by GlassBackground / hero). */
+@keyframes drift1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(46px, 34px) scale(1.12); }
+}
+@keyframes drift2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-38px, -44px) scale(1.18); }
+}
+@keyframes drift3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(30px, -30px) scale(1.1); }
+}
+@keyframes ping {
+  0% { transform: scale(1); opacity: 0.55; }
+  100% { transform: scale(2.1); opacity: 0; }
 }
 
 *,
@@ -95,19 +126,21 @@ body {
   font-size: 16px;
   line-height: 1.45;
   color: var(--color-fg);
-  background: var(--color-bg);
+  background: #070c0a;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  /* Lock the look to a phone-width column even on desktop, so the design is
-     always evaluated as the mobile-only product it is. */
   overscroll-behavior-y: none;
-  /* Native-app feel when launched standalone from the Home Screen. */
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
+}
+
+/* Hide scrollbars for the app-like feel. */
+::-webkit-scrollbar {
+  display: none;
 }
 
 a {
@@ -125,7 +158,6 @@ select,
 textarea {
   font-family: inherit;
   font-size: 16px; /* >=16px stops iOS Safari from zooming on focus */
-  /* Keep text fields selectable/editable despite the app-wide no-select. */
   -webkit-user-select: text;
   user-select: text;
 }

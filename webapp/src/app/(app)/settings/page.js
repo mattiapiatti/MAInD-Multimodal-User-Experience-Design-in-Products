@@ -37,7 +37,8 @@ export default async function SettingsPage() {
       <Card title="Account" padded>
         <div className={styles.account}>
           <div className={styles.avatar} aria-hidden="true">
-            {(user.name || user.email || "?").charAt(0).toUpperCase()}
+            <span className={styles.avatarHighlight} />
+            <span className={styles.avatarHighlightCool} />
           </div>
           <div className={styles.accountInfo}>
             <strong>{user.name || "—"}</strong>

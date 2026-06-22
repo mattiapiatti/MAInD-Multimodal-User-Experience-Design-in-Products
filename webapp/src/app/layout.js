@@ -1,4 +1,5 @@
 import "./globals.css";
+import GlassBackground from "@/components/shell/GlassBackground";
 
 export const metadata = {
   title: {
@@ -25,13 +26,16 @@ export const viewport = {
   initialScale: 1,
   maximumScale: 1,
   viewportFit: "cover",
-  themeColor: "#2f8062",
+  themeColor: "#070c0a",
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en" data-scroll-behavior="smooth">
-      <body>{children}</body>
+      <body>
+        <GlassBackground />
+        <div style={{ position: "relative", zIndex: 1 }}>{children}</div>
+      </body>
     </html>
   );
 }

@@ -6,22 +6,20 @@
   justify-content: center;
   gap: 16px;
   padding: 24px;
-  background:
-    radial-gradient(
-      120% 70% at 50% -10%,
-      var(--color-accent-soft) 0%,
-      transparent 60%
-    ),
-    var(--color-bg);
+  /* Transparent: the global dark backdrop + animated glow orbs show through. */
+  background: transparent;
 }
 
 .card {
   width: 100%;
   max-width: 400px;
-  background: var(--color-surface);
+  /* Glass panel recipe — frosted surface over the dark backdrop. */
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
+  border-radius: var(--radius-card);
+  box-shadow: var(--glass-shadow);
   padding: 28px 24px 30px;
   display: flex;
   flex-direction: column;
@@ -39,8 +37,8 @@
   border-radius: 50%;
   background: linear-gradient(
     135deg,
-    var(--color-accent) 0%,
-    var(--color-accent-strong) 100%
+    var(--color-accent-bright) 0%,
+    var(--color-accent) 100%
   );
   box-shadow: 0 0 0 4px var(--color-accent-soft);
 }
@@ -101,7 +99,7 @@
   text-align: center;
 }
 .footer a {
-  color: var(--color-accent);
+  color: var(--color-accent-bright);
   font-weight: 600;
 }
 
