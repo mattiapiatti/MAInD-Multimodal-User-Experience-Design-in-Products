@@ -7,6 +7,7 @@ import Screen from "@/components/shell/Screen";
 import Card from "@/components/ui/Card";
 import DeviceManager from "@/components/device/DeviceManager";
 import Avatar from "@/components/ui/Avatar";
+import DownloadReport from "@/components/insights/DownloadReport";
 import { PulseIcon } from "@/components/shell/icons";
 import TalkButton from "./TalkButton";
 import styles from "./home.module.css";
@@ -45,7 +46,7 @@ export default async function HomePage() {
   }));
 
   return (
-    <Screen>
+    <Screen action={<DownloadReport icon />}>
       <section className={styles.hero}>
         <div className={styles.heroTop}>
           <div className={styles.heroHead}>

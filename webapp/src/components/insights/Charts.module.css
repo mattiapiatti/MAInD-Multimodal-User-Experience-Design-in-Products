@@ -10,14 +10,14 @@
   align-items: flex-end;
   justify-content: space-between;
   gap: 8px;
-  margin-top: 6px;
+  margin-top: 2px;
 }
 .barCol {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 9px;
+  gap: 6px;
 }
 .barValue {
   font-size: 11px;
@@ -26,7 +26,7 @@
 }
 .barTrack {
   width: 24px;
-  height: 124px;
+  height: 92px;
   display: flex;
   align-items: flex-end;
   border-radius: 9px;

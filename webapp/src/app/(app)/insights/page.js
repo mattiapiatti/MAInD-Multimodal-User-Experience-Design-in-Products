@@ -3,6 +3,7 @@ import { getFrequencyByMonth, getSummary, getTimeline } from "@/lib/mock/health"
 import Screen from "@/components/shell/Screen";
 import Card from "@/components/ui/Card";
 import { FrequencyChart } from "@/components/insights/Charts";
+import Timeline from "@/components/insights/Timeline";
 import DownloadReport from "@/components/insights/DownloadReport";
 import styles from "./insights.module.css";
 
@@ -15,7 +16,7 @@ export default async function InsightsPage() {
   const timeline = getTimeline();
 
   return (
-    <Screen title="Insights">
+    <Screen title="Insights" action={<DownloadReport icon />}>
       <div className={styles.kpis}>
         <div className={styles.kpi}>
           <span className={styles.kpiNum}>{summary.checkins}</span>
@@ -32,27 +33,7 @@ export default async function InsightsPage() {
       </Card>
 
       <Card title="Insights" subtitle="Your latest activity" padded>
-        <ul className={styles.timeline}>
-          {timeline.map((item, i) => (
-            <li key={i} className={styles.tItem}>
-              <div className={styles.tHead}>
-                <span className={styles.tDate}>{item.date}</span>
-                <span className={styles.tTag} data-cat={item.category}>
-                  {item.category}
-                </span>
-              </div>
-              <p className={styles.tText}>{item.text}</p>
-            </li>
-          ))}
-        </ul>
-      </Card>
-
-      <Card
-        title="Appointment record"
-        subtitle="A PDF to share with your care team."
-        padded
-      >
-        <DownloadReport />
+        <Timeline items={timeline} />
       </Card>
     </Screen>
   );
