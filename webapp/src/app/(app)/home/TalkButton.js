@@ -1,23 +1,13 @@
-"use client";
-
-import { useState } from "react";
+import Link from "next/link";
 import styles from "./home.module.css";
 
 /**
- * Primary hero CTA. White pill with a mic icon + "Talk to Kai".
- * Tapping toggles a local "listening" visual; it is otherwise non-functional.
+ * Primary hero CTA. White pill with a mic icon + "Talk to Kai" that opens the
+ * chat with Kai.
  */
 export default function TalkButton() {
-  const [listening, setListening] = useState(false);
-
   return (
-    <button
-      type="button"
-      className={styles.talk}
-      data-listening={listening ? "true" : "false"}
-      aria-pressed={listening}
-      onClick={() => setListening((v) => !v)}
-    >
+    <Link href="/chat" className={styles.talk}>
       <svg
         width="17"
         height="17"
@@ -34,6 +24,6 @@ export default function TalkButton() {
         <line x1="12" y1="17" x2="12" y2="21" />
       </svg>
       Talk to Kai
-    </button>
+    </Link>
   );
 }
