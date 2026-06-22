@@ -16,7 +16,7 @@ export default async function InsightsPage() {
   const timeline = getTimeline();
 
   return (
-    <Screen title="Insights" action={<DownloadReport icon />}>
+    <Screen title="Insights">
       <div className={styles.kpis}>
         <div className={styles.kpi}>
           <span className={styles.kpiNum}>{summary.checkins}</span>
@@ -30,6 +30,14 @@ export default async function InsightsPage() {
 
       <Card title="Symptom frequency" subtitle="Days per month" padded>
         <FrequencyChart data={frequency} />
+      </Card>
+
+      <Card
+        title="Share with your care team"
+        subtitle="Export a PDF of your profile and recent insights to bring to appointments."
+        padded
+      >
+        <DownloadReport />
       </Card>
 
       <Card title="Insights" subtitle="Your latest activity" padded>

@@ -3,9 +3,8 @@
 import { useState } from "react";
 import Button from "@/components/ui/Button";
 import { DownloadIcon } from "@/components/shell/icons";
-import styles from "./DownloadReport.module.css";
 
-export default function DownloadReport({ icon = false }) {
+export default function DownloadReport() {
   const [busy, setBusy] = useState(false);
 
   async function download() {
@@ -27,20 +26,6 @@ export default function DownloadReport({ icon = false }) {
     } finally {
       setBusy(false);
     }
-  }
-
-  if (icon) {
-    return (
-      <button
-        type="button"
-        className={styles.cta}
-        onClick={download}
-        disabled={busy}
-      >
-        <DownloadIcon width={16} height={16} aria-hidden="true" />
-        Download PDF
-      </button>
-    );
   }
 
   return (
