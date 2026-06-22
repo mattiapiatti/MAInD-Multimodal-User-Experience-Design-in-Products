@@ -16,7 +16,7 @@ export default function DownloadReport() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "companion-report.pdf";
+      a.download = "kai-report.pdf";
       document.body.appendChild(a);
       a.click();
       a.remove();
