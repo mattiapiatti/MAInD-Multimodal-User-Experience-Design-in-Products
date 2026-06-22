@@ -199,7 +199,7 @@ export default function Chat({ name }) {
             <path d="M15 18l-6-6 6-6" />
           </svg>
         </Link>
-        <Avatar size={38} />
+        <Avatar size={38} face />
         <div className={styles.who}>
           <strong>Kai</strong>
           <span className={styles.status}>
