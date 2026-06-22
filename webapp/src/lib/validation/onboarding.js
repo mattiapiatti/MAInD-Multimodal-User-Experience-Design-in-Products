@@ -62,7 +62,9 @@ export const onboardingSchema = z.object({
       ]),
     )
     .min(1, "Select at least one"),
-  hormoneMethod: z.enum(["gel", "injection", "pill", "patch", "other", "nothing"]),
+  hormoneMethod: z
+    .array(z.enum(["gel", "injection", "pill", "patch", "other", "nothing"]))
+    .min(1, "Select at least one"),
   stage: z.enum(["starting", "few_months", "further"]),
   goals: z.array(z.string()).default([]),
   trackedSymptoms: z.array(z.string()).default([]),

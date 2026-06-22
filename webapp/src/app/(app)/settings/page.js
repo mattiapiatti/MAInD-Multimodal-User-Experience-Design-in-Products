@@ -20,7 +20,7 @@ export default async function SettingsPage() {
     preferredName: profile?.preferredName || "",
     pronouns: profile?.pronouns || [],
     careContext: profile?.careContext || [],
-    hormoneMethod: profile?.hormoneMethod || undefined,
+    hormoneMethod: profile?.hormoneMethod || [],
     stage: profile?.stage || undefined,
     goals: profile?.goals || [],
     trackedSymptoms: profile?.trackedSymptoms || [],

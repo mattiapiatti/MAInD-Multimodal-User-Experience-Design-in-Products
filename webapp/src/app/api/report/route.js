@@ -69,7 +69,10 @@ export async function GET() {
       .filter(Boolean)
       .join(", ") || "—";
   const methodLabel =
-    METHOD_OPTIONS.find((m) => m.value === profile?.hormoneMethod)?.label || "—";
+    asList(profile?.hormoneMethod)
+      .map((v) => METHOD_OPTIONS.find((m) => m.value === v)?.label)
+      .filter(Boolean)
+      .join(", ") || "—";
   const stageLabel =
     STAGE_OPTIONS.find((s) => s.value === profile?.stage)?.label || "—";
   text("Profile", margin, y, { size: 13, f: bold });

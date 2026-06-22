@@ -146,7 +146,7 @@ export default function OnboardingForm({
       preferredName: "",
       pronouns: [],
       careContext: [],
-      hormoneMethod: undefined,
+      hormoneMethod: [],
       stage: undefined,
       goals: [],
       trackedSymptoms: [],
@@ -233,7 +233,7 @@ export default function OnboardingForm({
           control={control}
           name="hormoneMethod"
           render={({ field }) => (
-            <RadioCards
+            <CheckCards
               options={METHOD_OPTIONS}
               value={field.value}
               onChange={field.onChange}
@@ -241,7 +241,7 @@ export default function OnboardingForm({
           )}
         />
         {errors.hormoneMethod ? (
-          <span className={styles.err}>Select an option</span>
+          <span className={styles.err}>Select at least one</span>
         ) : null}
       </div>
     ),
@@ -341,7 +341,7 @@ export default function OnboardingForm({
       },
       {
         label: "How you take it",
-        text: v.hormoneMethod ? labelOf(METHOD_OPTIONS, v.hormoneMethod) : "",
+        text: (v.hormoneMethod || []).map((x) => labelOf(METHOD_OPTIONS, x)).join(", "),
       },
       {
         label: "Where you are",

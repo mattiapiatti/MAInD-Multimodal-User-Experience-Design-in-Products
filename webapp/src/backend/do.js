@@ -240,7 +240,7 @@ export class BackendDO extends DurableObject {
             preferredName: DEMO_NAME.split(" ")[0],
             pronouns: ["They/Them"],
             careContext: ["menopause"],
-            hormoneMethod: "gel",
+            hormoneMethod: ["gel"],
             stage: "few_months",
             goals: [],
             trackedSymptoms: [],
@@ -297,6 +297,7 @@ export class BackendDO extends DurableObject {
       ...row,
       pronouns: toList(row.pronouns),
       careContext: toList(row.careContext),
+      hormoneMethod: toList(row.hormoneMethod),
     };
   }
 
@@ -306,7 +307,7 @@ export class BackendDO extends DurableObject {
       preferredName: values.preferredName ?? null,
       pronouns: JSON.stringify(values.pronouns ?? []),
       careContext: JSON.stringify(values.careContext ?? []),
-      hormoneMethod: values.hormoneMethod ?? null,
+      hormoneMethod: JSON.stringify(values.hormoneMethod ?? []),
       stage: values.stage ?? null,
       goals: values.goals ?? [],
       trackedSymptoms: values.trackedSymptoms ?? [],

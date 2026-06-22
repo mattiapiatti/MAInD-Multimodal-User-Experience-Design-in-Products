@@ -102,10 +102,9 @@ export const onboardingProfiles = sqliteTable("onboarding_profiles", {
   pronouns: text("pronouns"),
   // Care context(s), multi-select. Stored as a JSON string, decoded in the DO.
   careContext: text("care_context"),
-  // How the hormone/medication is taken.
-  hormoneMethod: text("hormone_method", {
-    enum: ["gel", "injection", "pill", "patch", "other", "nothing"],
-  }),
+  // How the hormone/medication is taken (multi-select). JSON string, decoded in
+  // the DO; legacy single-string rows still read.
+  hormoneMethod: text("hormone_method"),
   // Where the person is in their therapy.
   stage: text("stage", { enum: ["starting", "few_months", "further"] }),
   // What the person wants to get out of it (multi-select stored as JSON array).
