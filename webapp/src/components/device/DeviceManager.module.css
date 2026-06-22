@@ -1,8 +1,9 @@
-/* The single "Kai" glass card — same chrome for both paired and pair states */
+/* The single "Kai" glass card — same chrome and height for both states */
 .deviceCard {
   display: flex;
   gap: 16px;
   align-items: center;
+  min-height: 156px;
   padding: 16px;
   border-radius: var(--radius-card);
   background: var(--glass-bg);
@@ -51,18 +52,6 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.unlink {
-  align-self: flex-start;
-  margin-top: 2px;
-  background: none;
-  border: none;
-  color: var(--color-danger);
-  font-size: 13px;
-  font-weight: 600;
-  padding: 4px 0;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
 .deviceArt {
   width: 108px;
   height: 108px;
@@ -78,13 +67,8 @@
   filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.55));
 }
 
-/* Not-yet-paired state — same .deviceCard chrome, just different body content */
-.pairCopy {
-  font-size: 13px;
-  line-height: 1.45;
-  color: var(--color-fg-muted);
-}
-.pairAction {
+/* Pair / Unpair action — same pill size in both states */
+.action {
   margin-top: 4px;
 }
 

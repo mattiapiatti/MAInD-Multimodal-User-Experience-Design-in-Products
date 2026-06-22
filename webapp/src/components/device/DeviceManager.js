@@ -74,13 +74,15 @@ export default function DeviceManager({ devices }) {
               <span className={styles.meta}>
                 {device.hardwareId} · since {formatDate(device.pairedAt)}
               </span>
-              <button
-                className={styles.unlink}
-                onClick={() => remove(device.id)}
-                disabled={!!busy}
-              >
-                Unpair
-              </button>
+              <div className={styles.action}>
+                <Button
+                  variant="danger"
+                  loading={busy === "remove"}
+                  onClick={() => remove(device.id)}
+                >
+                  Unpair
+                </Button>
+              </div>
             </>
           ) : (
             <>
@@ -92,10 +94,8 @@ export default function DeviceManager({ devices }) {
                 />
                 <span className={styles.statusLabel}>Not paired yet</span>
               </div>
-              <p className={styles.pairCopy}>
-                Tap to bring it online and start talking.
-              </p>
-              <div className={styles.pairAction}>
+              <span className={styles.meta}>Tap to bring it online.</span>
+              <div className={styles.action}>
                 <Button loading={busy === "sim"} onClick={pairKai}>
                   Pair Kai
                 </Button>
