@@ -50,10 +50,6 @@ export default async function HomePage() {
           <div className={styles.heroHead}>
             <span className={styles.eyebrow}>{greeting}</span>
             <h1 className={styles.heroTitle}>Hi{name ? `, ${name}` : ""}</h1>
-            <div className={styles.statusPill}>
-              <span className={styles.statusDot} aria-hidden="true" />
-              <span>Synced · stays on device</span>
-            </div>
           </div>
           <div className={styles.face} aria-hidden="true">
             <svg width="42" height="42" viewBox="0 0 100 100" fill="none">
