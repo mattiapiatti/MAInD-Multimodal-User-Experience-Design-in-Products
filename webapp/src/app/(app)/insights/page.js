@@ -15,11 +15,6 @@ export default async function InsightsPage() {
 
   return (
     <Screen title="Insights">
-      <p className={styles.note}>
-        Sample data. It will connect to the companion&apos;s memory in a later
-        phase.
-      </p>
-
       <div className={styles.kpis}>
         <div className={styles.kpi}>
           <span className={styles.kpiNum}>{summary.checkins}</span>
