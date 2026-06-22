@@ -7,6 +7,7 @@ import styles from "./Chat.module.css";
 
 const SYNC_REPLY =
   "Got it — your messages will sync to your device as soon as you're connected.";
+const SYNCED_REPLY = "Synced to your device.";
 
 let seq = 0;
 const nextId = () => `m${seq++}`;
@@ -58,13 +59,15 @@ function VoiceBubble({ url, secs }) {
   );
 }
 
-export default function Chat({ name }) {
-  const [messages, setMessages] = useState([
+export default function Chat({ name, paired = false }) {
+  const [messages, setMessages] = useState(() => [
     {
       id: nextId(),
       from: "kai",
       type: "text",
-      text: `Hi${name ? `, ${name}` : ""}. I'm not connected to your device yet — but go ahead and write or send a voice note. Everything will sync the moment you're connected.`,
+      text: paired
+        ? `Hi${name ? `, ${name}` : ""}. I'm connected to your device — write or send a voice note and it syncs straight across.`
+        : `Hi${name ? `, ${name}` : ""}. I'm not connected to your device yet — but go ahead and write or send a voice note. Everything will sync the moment you're connected.`,
     },
   ]);
   const [draft, setDraft] = useState("");
@@ -86,10 +89,15 @@ export default function Chat({ name }) {
     setTimeout(() => {
       setMessages((m) => [
         ...m,
-        { id: nextId(), from: "kai", type: "text", text: SYNC_REPLY },
+        {
+          id: nextId(),
+          from: "kai",
+          type: "text",
+          text: paired ? SYNCED_REPLY : SYNC_REPLY,
+        },
       ]);
     }, 650);
-  }, []);
+  }, [paired]);
 
   function setLiveTranscript(value) {
     transcriptRef.current = value;
@@ -203,8 +211,12 @@ export default function Chat({ name }) {
         <div className={styles.who}>
           <strong>Kai</strong>
           <span className={styles.status}>
-            <span className={styles.statusDot} aria-hidden="true" />
-            Offline · syncs to your device
+            <span
+              className={styles.statusDot}
+              data-paired={paired ? "true" : "false"}
+              aria-hidden="true"
+            />
+            {paired ? "Connected · in sync" : "Offline · syncs to your device"}
           </span>
         </div>
       </header>

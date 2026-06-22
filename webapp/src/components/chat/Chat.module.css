@@ -58,6 +58,10 @@
   background: var(--color-fg-faint);
   flex: none;
 }
+.statusDot[data-paired="true"] {
+  background: var(--color-success);
+  box-shadow: 0 0 8px var(--color-success);
+}
 
 /* message list */
 .list {
