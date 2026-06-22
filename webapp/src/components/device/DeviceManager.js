@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Alert from "@/components/ui/Alert";
 import { simulateDeviceAction, removeDeviceAction } from "@/app/(app)/device/actions";
@@ -26,8 +25,6 @@ export default function DeviceManager({ devices }) {
   const router = useRouter();
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
-
-  const hasDevice = devices.some((d) => d.status === "active");
 
   async function pairKai() {
     setError("");
@@ -59,74 +56,62 @@ export default function DeviceManager({ devices }) {
     }
   }
 
+  const device = devices.find((d) => d.status === "active");
+
   return (
     <>
-      {devices.length > 0 ? (
-        <ul className={styles.list}>
-          {devices.map((d) => (
-            <li key={d.id} className={styles.deviceCard}>
-              <div className={styles.itemBody}>
-                <strong>{d.name || "Kai"}</strong>
-                <div className={styles.statusRow}>
-                  <span
-                    className={styles.dot}
-                    data-status={d.status}
-                    aria-hidden="true"
-                  />
-                  <span className={styles.statusLabel}>
-                    {d.status === "active"
-                      ? "Connected · listening"
-                      : "Not paired · tap to set up"}
-                  </span>
-                </div>
-                <span className={styles.meta}>
-                  {d.hardwareId} · since {formatDate(d.pairedAt)}
-                </span>
-                <button
-                  className={styles.unlink}
-                  onClick={() => remove(d.id)}
-                  disabled={!!busy}
-                >
-                  Unpair
-                </button>
-              </div>
-              <div className={styles.deviceArt}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/kai.png" alt="Kai voice device" width={521} height={560} />
-              </div>
-            </li>
-          ))}
-        </ul>
-      ) : null}
+      {error ? <Alert tone="error">{error}</Alert> : null}
 
-      {!hasDevice ? (
-        <Card
-          title="Pair a device"
-          subtitle="Bring Kai online and link it to your account."
-          padded
-        >
-          {error ? <Alert tone="error">{error}</Alert> : null}
-
-          <div className={styles.pairKai}>
-            <div className={styles.pairKaiText}>
-              <p className={styles.pairKaiCopy}>
-                Kai is your voice companion. Tap to pair it with this account.
+      <div className={styles.deviceCard}>
+        <div className={styles.itemBody}>
+          <strong>Kai</strong>
+          {device ? (
+            <>
+              <div className={styles.statusRow}>
+                <span className={styles.dot} aria-hidden="true" />
+                <span className={styles.statusLabel}>Connected · listening</span>
+              </div>
+              <span className={styles.meta}>
+                {device.hardwareId} · since {formatDate(device.pairedAt)}
+              </span>
+              <button
+                className={styles.unlink}
+                onClick={() => remove(device.id)}
+                disabled={!!busy}
+              >
+                Unpair
+              </button>
+            </>
+          ) : (
+            <>
+              <div className={styles.statusRow}>
+                <span
+                  className={styles.dot}
+                  data-status="revoked"
+                  aria-hidden="true"
+                />
+                <span className={styles.statusLabel}>Not paired yet</span>
+              </div>
+              <p className={styles.pairCopy}>
+                Tap to bring it online and start talking.
               </p>
-              <Button loading={busy === "sim"} onClick={pairKai}>
-                Pair Kai
-              </Button>
-            </div>
-            <div className={styles.pairKaiArt}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/kai.png" alt="Kai voice device" width={521} height={560} />
-            </div>
-          </div>
-        </Card>
-      ) : null}
+              <div className={styles.pairAction}>
+                <Button loading={busy === "sim"} onClick={pairKai}>
+                  Pair Kai
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+        <div className={styles.deviceArt}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/kai.png" alt="Kai voice device" width={521} height={560} />
+        </div>
+      </div>
 
       <p className={styles.exclusivity}>
-        Once paired, a device belongs exclusively to your account: it can&apos;t
-        be linked to anyone else until you unpair it.
+        Once paired, Kai belongs exclusively to your account: it can&apos;t be
+        linked to anyone else until you unpair it.
       </p>
     </>
   );

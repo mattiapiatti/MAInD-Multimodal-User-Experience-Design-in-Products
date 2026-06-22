@@ -1,11 +1,4 @@
-.list {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-/* Paired "Kai" card — standalone glass panel */
+/* The single "Kai" glass card — same chrome for both paired and pair states */
 .deviceCard {
   display: flex;
   gap: 16px;
@@ -85,43 +78,14 @@
   filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.55));
 }
 
-/* Pair Kai (inside the glass Card) */
-.pairKai {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-.pairKaiText {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 14px;
-}
-.pairKaiCopy {
-  font-size: 14px;
+/* Not-yet-paired state — same .deviceCard chrome, just different body content */
+.pairCopy {
+  font-size: 13px;
   line-height: 1.45;
   color: var(--color-fg-muted);
 }
-.pairKaiArt {
-  width: 132px;
-  flex-shrink: 0;
-  line-height: 0;
-}
-.pairKaiArt img {
-  width: 100%;
-  height: auto;
-  display: block;
-  transform: rotate(-7deg);
-  filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.55));
-}
-
-.note {
-  font-size: 12px;
-  line-height: 1.45;
-  color: var(--color-fg-muted);
-  text-align: center;
-  max-width: 260px;
+.pairAction {
+  margin-top: 4px;
 }
 
 .exclusivity {
