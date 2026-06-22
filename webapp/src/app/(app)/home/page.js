@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { requireOnboardedUser } from "@/lib/auth/guard";
 import { getOnboarding } from "@/lib/data/onboarding";
 import { listDevices } from "@/lib/data/devices";
@@ -7,7 +6,6 @@ import Screen from "@/components/shell/Screen";
 import Card from "@/components/ui/Card";
 import DeviceManager from "@/components/device/DeviceManager";
 import Avatar from "@/components/ui/Avatar";
-import { PulseIcon } from "@/components/shell/icons";
 import TalkButton from "./TalkButton";
 import styles from "./home.module.css";
 
@@ -94,17 +92,7 @@ export default async function HomePage() {
       <h2 className={styles.sectionTitle}>Your device</h2>
       <DeviceManager devices={deviceRows} />
 
-      <Card
-        title="Recent insights"
-        subtitle="A summary of your last few days"
-        footer={
-          <Link href="/insights" className={styles.footerLink}>
-            <PulseIcon width={18} height={18} aria-hidden="true" />
-            See all insights
-          </Link>
-        }
-        padded
-      >
+      <Card title="Recent insights" subtitle="A summary of your last few days" padded>
         <ul className={styles.timeline}>
           {timeline.map((item, i) => (
             <li key={i} className={styles.tItem}>

@@ -28,15 +28,15 @@ export default function Timeline({ items, initial = 3 }) {
         ))}
       </ul>
 
-      {!expanded && hidden > 0 ? (
+      {hidden > 0 ? (
         <button
           type="button"
           className={styles.seeAll}
-          onClick={() => setExpanded(true)}
+          onClick={() => setExpanded((v) => !v)}
         >
-          See all ({items.length})
+          {expanded ? "Show less" : `See all (${items.length})`}
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M6 9l6 6 6-6" />
+            <path d={expanded ? "M6 15l6-6 6 6" : "M6 9l6 6 6-6"} />
           </svg>
         </button>
       ) : null}
