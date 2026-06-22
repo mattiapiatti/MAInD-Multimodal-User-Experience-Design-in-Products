@@ -3,18 +3,21 @@
   position: relative;
   overflow: hidden;
   flex: none;
+  /* Brighter, cooler-accented gradient so the orb stands out on the dark green
+     surfaces; the light rim defines its edge against any background. */
   background: conic-gradient(
-    from 220deg at 35% 30%,
-    #6fe0aa,
-    #2f8062,
-    #1b4a39,
-    #5fc8a0,
-    #6fe0aa
+    from 210deg at 35% 30%,
+    #cdeed9,
+    #74d6b2,
+    #5cb8d6,
+    #9ff0c8,
+    #cdeed9
   );
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.45),
-    inset 0 0 18px rgba(0, 0, 0, 0.25),
-    0 4px 12px rgba(0, 0, 0, 0.3);
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 0 16px rgba(0, 0, 0, 0.18),
+    0 4px 14px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(255, 255, 255, 0.28);
 }
 .highlight {
   position: absolute;
