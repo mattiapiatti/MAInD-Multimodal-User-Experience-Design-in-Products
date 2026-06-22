@@ -31,7 +31,7 @@ export default function DownloadReport() {
   return (
     <Button variant="primary" fullWidth loading={busy} onClick={download}>
       <DownloadIcon width={18} height={18} aria-hidden="true" />
-      Download PDF
+      Download your insights
     </Button>
   );
 }
