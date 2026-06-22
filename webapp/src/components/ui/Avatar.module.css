@@ -42,3 +42,11 @@
   height: 100%;
   filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35));
 }
+
+/* "screen" variant: black face instead of the green gradient orb */
+.dark {
+  background: radial-gradient(circle at 38% 30%, #2c332f, #0b0f0e);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 4px 12px rgba(0, 0, 0, 0.4);
+}
