@@ -31,7 +31,7 @@ export default async function InsightsPage() {
         <FrequencyChart data={frequency} />
       </Card>
 
-      <Card title="Recent insights" subtitle="Everything from the last few weeks" padded>
+      <Card title="Insights" subtitle="Your latest activity" padded>
         <ul className={styles.timeline}>
           {timeline.map((item, i) => (
             <li key={i} className={styles.tItem}>
