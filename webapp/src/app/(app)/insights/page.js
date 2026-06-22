@@ -1,5 +1,5 @@
 import { requireOnboardedUser } from "@/lib/auth/guard";
-import { getFrequencyByMonth, getSummary } from "@/lib/mock/health";
+import { getFrequencyByMonth, getSummary, getTimeline } from "@/lib/mock/health";
 import Screen from "@/components/shell/Screen";
 import Card from "@/components/ui/Card";
 import { FrequencyChart } from "@/components/insights/Charts";
@@ -12,6 +12,7 @@ export default async function InsightsPage() {
   await requireOnboardedUser();
   const frequency = getFrequencyByMonth();
   const summary = getSummary();
+  const timeline = getTimeline();
 
   return (
     <Screen title="Insights">
@@ -28,6 +29,22 @@ export default async function InsightsPage() {
 
       <Card title="Symptom frequency" subtitle="Days per month" padded>
         <FrequencyChart data={frequency} />
+      </Card>
+
+      <Card title="Recent insights" subtitle="Everything from the last few weeks" padded>
+        <ul className={styles.timeline}>
+          {timeline.map((item, i) => (
+            <li key={i} className={styles.tItem}>
+              <div className={styles.tHead}>
+                <span className={styles.tDate}>{item.date}</span>
+                <span className={styles.tTag} data-cat={item.category}>
+                  {item.category}
+                </span>
+              </div>
+              <p className={styles.tText}>{item.text}</p>
+            </li>
+          ))}
+        </ul>
       </Card>
 
       <Card

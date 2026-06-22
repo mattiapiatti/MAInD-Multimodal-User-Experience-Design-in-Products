@@ -26,7 +26,7 @@ export default async function HomePage() {
     listDevices(user.id),
   ]);
   const summary = getSummary();
-  const timeline = getTimeline();
+  const timeline = getTimeline().slice(0, 4);
   const name = profile?.preferredName || user.name || "";
   const greeting = greetingFor(new Date().getHours());
 

@@ -66,12 +66,46 @@ export function getSummary() {
 
 export const TRACKED = SYMPTOMS;
 
-/** A short, human timeline of recent milestones (mock). */
+/**
+ * A human timeline of recent milestones (mock). Each entry has a category so
+ * the insights screen can tag it; the home screen shows a short slice.
+ */
 export function getTimeline() {
   return [
-    { date: "Jun 10", text: "Evening check-in: mood steady, sleep improved." },
-    { date: "Jun 7", text: "Reported an evening hot flash, medium intensity." },
-    { date: "Jun 3", text: "3 months on therapy — no adverse effects." },
-    { date: "May 28", text: "Energy dipped for a few days, then recovered." },
+    {
+      date: "Jun 10",
+      category: "Mood",
+      text: "Evening check-in: mood steady, and sleep improved after a calmer week.",
+    },
+    {
+      date: "Jun 7",
+      category: "Symptom",
+      text: "Reported an evening hot flash, medium intensity, lasting about ten minutes.",
+    },
+    {
+      date: "Jun 3",
+      category: "Therapy",
+      text: "Three months on therapy — no adverse effects noted so far.",
+    },
+    {
+      date: "May 28",
+      category: "Energy",
+      text: "Energy dipped for a few days, then recovered alongside better sleep.",
+    },
+    {
+      date: "May 21",
+      category: "Sleep",
+      text: "Sleep averaged about 7 hours this week, up from 6 the week before.",
+    },
+    {
+      date: "May 14",
+      category: "Mood",
+      text: "Mood more even overall, with fewer low moments in the evenings.",
+    },
+    {
+      date: "May 6",
+      category: "Symptom",
+      text: "Occasional mild headaches, mostly in the early afternoon.",
+    },
   ];
 }
