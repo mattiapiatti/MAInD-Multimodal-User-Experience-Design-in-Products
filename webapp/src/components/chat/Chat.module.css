@@ -131,6 +131,13 @@
   font-size: 12px;
   opacity: 0.85;
 }
+.voiceText {
+  display: block;
+  margin-top: 7px;
+  font-size: 13px;
+  line-height: 1.35;
+  opacity: 0.85;
+}
 
 /* input bar */
 .inputBar {
@@ -163,6 +170,35 @@
 .input:focus {
   outline: none;
   border-color: var(--color-accent-bright);
+}
+
+/* live recording + transcription */
+.recBox {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 9px 16px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(214, 90, 80, 0.5);
+}
+.recDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #ff6b5e;
+  flex: none;
+  animation: recPulse 1.3s ease-in-out infinite;
+}
+.recText {
+  font-size: 15px;
+  color: var(--color-fg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .send,
 .mic {

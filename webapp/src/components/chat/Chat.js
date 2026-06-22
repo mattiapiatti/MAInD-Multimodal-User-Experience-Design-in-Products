@@ -69,15 +69,18 @@ export default function Chat({ name }) {
   ]);
   const [draft, setDraft] = useState("");
   const [recording, setRecording] = useState(false);
+  const [transcript, setTranscript] = useState("");
 
   const listRef = useRef(null);
   const recRef = useRef(null);
   const chunksRef = useRef([]);
   const startedRef = useRef(0);
+  const recognitionRef = useRef(null);
+  const transcriptRef = useRef("");
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages]);
+  }, [messages, transcript]);
 
   const kaiReply = useCallback(() => {
     setTimeout(() => {
@@ -88,6 +91,11 @@ export default function Chat({ name }) {
     }, 650);
   }, []);
 
+  function setLiveTranscript(value) {
+    transcriptRef.current = value;
+    setTranscript(value);
+  }
+
   function sendText(e) {
     e.preventDefault();
     const text = draft.trim();
@@ -97,9 +105,48 @@ export default function Chat({ name }) {
     kaiReply();
   }
 
+  // Live speech-to-text while recording (Web Speech API, where available).
+  function startTranscription() {
+    const SpeechRec =
+      typeof window !== "undefined" &&
+      (window.SpeechRecognition || window.webkitSpeechRecognition);
+    if (!SpeechRec) return;
+    try {
+      const rec = new SpeechRec();
+      rec.lang = navigator.language || "en-US";
+      rec.continuous = true;
+      rec.interimResults = true;
+      let finalText = "";
+      rec.onresult = (e) => {
+        let interim = "";
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          const chunk = e.results[i][0].transcript;
+          if (e.results[i].isFinal) finalText += chunk + " ";
+          else interim += chunk;
+        }
+        setLiveTranscript((finalText + interim).trim());
+      };
+      rec.onerror = () => {};
+      recognitionRef.current = rec;
+      rec.start();
+    } catch {
+      /* transcription unavailable — recording still works */
+    }
+  }
+
+  function stopTranscription() {
+    try {
+      recognitionRef.current?.stop();
+    } catch {
+      /* ignore */
+    }
+    recognitionRef.current = null;
+  }
+
   async function toggleRecord() {
     if (recording) {
       recRef.current?.stop();
+      stopTranscription();
       return;
     }
     try {
@@ -107,6 +154,7 @@ export default function Chat({ name }) {
       const rec = new MediaRecorder(stream);
       chunksRef.current = [];
       startedRef.current = Date.now();
+      setLiveTranscript("");
       rec.ondataavailable = (ev) => {
         if (ev.data && ev.data.size) chunksRef.current.push(ev.data);
       };
@@ -114,14 +162,20 @@ export default function Chat({ name }) {
         const secs = Math.max(1, Math.round((Date.now() - startedRef.current) / 1000));
         const blob = new Blob(chunksRef.current, { type: rec.mimeType || "audio/webm" });
         const url = URL.createObjectURL(blob);
-        setMessages((m) => [...m, { id: nextId(), from: "me", type: "voice", url, secs }]);
+        const text = transcriptRef.current.trim();
+        setMessages((m) => [
+          ...m,
+          { id: nextId(), from: "me", type: "voice", url, secs, text },
+        ]);
         stream.getTracks().forEach((t) => t.stop());
+        setLiveTranscript("");
         setRecording(false);
         kaiReply();
       };
       recRef.current = rec;
       rec.start();
       setRecording(true);
+      startTranscription();
     } catch {
       setMessages((m) => [
         ...m,
@@ -163,7 +217,10 @@ export default function Chat({ name }) {
           >
             <div className={styles.bubble}>
               {m.type === "voice" ? (
-                <VoiceBubble url={m.url} secs={m.secs} />
+                <>
+                  <VoiceBubble url={m.url} secs={m.secs} />
+                  {m.text ? <span className={styles.voiceText}>{m.text}</span> : null}
+                </>
               ) : (
                 m.text
               )}
@@ -173,13 +230,22 @@ export default function Chat({ name }) {
       </div>
 
       <form className={styles.inputBar} onSubmit={sendText}>
-        <input
-          className={styles.input}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          placeholder="Message Kai…"
-          aria-label="Message"
-        />
+        {recording ? (
+          <div className={styles.recBox} aria-live="polite">
+            <span className={styles.recDot} aria-hidden="true" />
+            <span className={styles.recText}>
+              {transcript || "Listening…"}
+            </span>
+          </div>
+        ) : (
+          <input
+            className={styles.input}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="Message Kai…"
+            aria-label="Message"
+          />
+        )}
         {hasDraft ? (
           <button type="submit" className={styles.send} aria-label="Send">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
