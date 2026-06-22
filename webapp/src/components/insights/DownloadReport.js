@@ -33,12 +33,12 @@ export default function DownloadReport({ icon = false }) {
     return (
       <button
         type="button"
-        className={styles.iconBtn}
+        className={styles.cta}
         onClick={download}
         disabled={busy}
-        aria-label="Download PDF report"
       >
-        <DownloadIcon width={20} height={20} aria-hidden="true" />
+        <DownloadIcon width={16} height={16} aria-hidden="true" />
+        Download PDF
       </button>
     );
   }

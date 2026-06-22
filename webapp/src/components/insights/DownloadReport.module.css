@@ -1,20 +1,23 @@
-.iconBtn {
-  display: flex;
+.cta {
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid var(--color-border);
-  color: var(--color-fg);
-  box-shadow: var(--glass-highlight);
+  gap: 7px;
+  padding: 9px 14px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(180deg, #3a9b78, #2a6f54);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow:
+    0 6px 16px rgba(20, 60, 45, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
   -webkit-tap-highlight-color: transparent;
-  transition: transform var(--transition), background var(--transition);
+  transition: transform var(--transition);
 }
-.iconBtn:active:not(:disabled) {
-  transform: scale(0.94);
+.cta:active:not(:disabled) {
+  transform: scale(0.96);
 }
-.iconBtn:disabled {
+.cta:disabled {
   opacity: 0.6;
 }
