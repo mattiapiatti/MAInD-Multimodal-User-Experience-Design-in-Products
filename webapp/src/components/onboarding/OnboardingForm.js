@@ -10,12 +10,12 @@ import {
   GOAL_OPTIONS,
   SYMPTOM_OPTIONS,
   METHOD_OPTIONS,
-  STAGE_OPTIONS,
   PRONOUN_PRESETS,
 } from "@/lib/validation/onboarding";
 import TextField from "@/components/ui/TextField";
 import Button from "@/components/ui/Button";
 import Alert from "@/components/ui/Alert";
+import WheelDatePicker from "@/components/onboarding/WheelDatePicker";
 import styles from "./OnboardingForm.module.css";
 
 function ChipGroup({ options, value = [], onChange, columns = 1 }) {
@@ -50,31 +50,9 @@ function ChipGroup({ options, value = [], onChange, columns = 1 }) {
   );
 }
 
-function RadioCards({ options, value, onChange }) {
-  return (
-    <div className={styles.radioList}>
-      {options.map((opt) => {
-        const active = value === opt.value;
-        return (
-          <button
-            type="button"
-            key={opt.value}
-            className={`${styles.radioCard} ${active ? styles.radioActive : ""}`}
-            onClick={() => onChange(opt.value)}
-            aria-pressed={active}
-          >
-            <span className={styles.radioDot} aria-hidden="true" />
-            <span>{opt.label}</span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
 /**
- * Multi-select card list with a square checkbox indicator. Same card styling as
- * RadioCards, but toggles values in/out of an array (a person may pick several).
+ * Multi-select card list with a square checkbox indicator. Toggles values in and
+ * out of an array, so a person can pick several.
  */
 function CheckCards({ options, value = [], onChange }) {
   const set = new Set(value);
@@ -110,8 +88,9 @@ const STEPS = [
   { title: "What's your name", fields: ["preferredName", "pronouns"] },
   { title: "Your journey", fields: ["careContext"] },
   { title: "Your therapy", fields: ["hormoneMethod"] },
-  { title: "Where you are", fields: ["stage"] },
-  { title: "Last details", fields: ["therapyStartDate", "language"] },
+  // Final step: just the optional therapy start date. Enter is swallowed on
+  // inputs (see guardEnter) so the date field can't implicitly submit early.
+  { title: "Last details", fields: ["therapyStartDate"] },
 ];
 
 /**
@@ -157,6 +136,14 @@ export default function OnboardingForm({
   });
 
   const isLast = step === STEPS.length - 1;
+
+  // In the wizard, Enter inside the date field would implicitly submit the form
+  // and finish onboarding early. Keep it button-driven: swallow Enter on inputs.
+  function guardEnter(e) {
+    if (wizard && e.key === "Enter" && e.target.tagName === "INPUT") {
+      e.preventDefault();
+    }
+  }
 
   async function next() {
     const ok = await trigger(STEPS[step].fields);
@@ -245,25 +232,6 @@ export default function OnboardingForm({
         ) : null}
       </div>
     ),
-    stage: (
-      <div className={styles.block} key="stage">
-        <p className={styles.fieldLabel}>Where are you?</p>
-        <Controller
-          control={control}
-          name="stage"
-          render={({ field }) => (
-            <RadioCards
-              options={STAGE_OPTIONS}
-              value={field.value}
-              onChange={field.onChange}
-            />
-          )}
-        />
-        {errors.stage ? (
-          <span className={styles.err}>Select an option</span>
-        ) : null}
-      </div>
-    ),
     goals: (
       <div className={styles.block} key="goals">
         <p className={styles.fieldLabel}>What do you want to get out of it?</p>
@@ -299,29 +267,17 @@ export default function OnboardingForm({
     ),
     therapyStartDate: (
       <div className={styles.block} key="date">
-        <TextField
-          label="Therapy start (optional)"
-          type="date"
-          error={errors.therapyStartDate?.message}
-          {...register("therapyStartDate")}
+        <p className={styles.fieldLabel}>Therapy start</p>
+        <Controller
+          control={control}
+          name="therapyStartDate"
+          render={({ field }) => (
+            <WheelDatePicker value={field.value} onChange={field.onChange} />
+          )}
         />
-        <div>
-          <p className={styles.fieldLabel}>Companion language</p>
-          <Controller
-            control={control}
-            name="language"
-            render={({ field }) => (
-              <RadioCards
-                options={[
-                  { value: "en", label: "English" },
-                  { value: "it", label: "Italiano" },
-                ]}
-                value={field.value}
-                onChange={field.onChange}
-              />
-            )}
-          />
-        </div>
+        {errors.therapyStartDate ? (
+          <span className={styles.err}>{errors.therapyStartDate.message}</span>
+        ) : null}
       </div>
     ),
   };
@@ -344,16 +300,11 @@ export default function OnboardingForm({
         text: (v.hormoneMethod || []).map((x) => labelOf(METHOD_OPTIONS, x)).join(", "),
       },
       {
-        label: "Where you are",
-        text: v.stage ? labelOf(STAGE_OPTIONS, v.stage) : "",
-      },
-      {
         label: "Goals",
         text: (v.goals || []).map((x) => labelOf(GOAL_OPTIONS, x)).join(", "),
       },
       { label: "Symptoms", text: (v.trackedSymptoms || []).join(", ") },
       { label: "Therapy start", text: v.therapyStartDate },
-      { label: "Language", text: v.language === "it" ? "Italiano" : "English" },
     ].filter((r) => r.text);
 
     if (editing) {
@@ -405,7 +356,12 @@ export default function OnboardingForm({
 
   // Wizard mode: step header + progress + per-step fields.
   return (
-    <form className={styles.form} onSubmit={handleSubmit(submit)} noValidate>
+    <form
+      className={styles.form}
+      onSubmit={handleSubmit(submit)}
+      onKeyDown={guardEnter}
+      noValidate
+    >
       <div className={styles.progress}>
         {STEPS.map((_, i) => (
           <span

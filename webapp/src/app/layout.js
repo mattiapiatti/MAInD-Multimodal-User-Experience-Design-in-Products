@@ -29,9 +29,16 @@ export const viewport = {
   themeColor: "#070c0a",
 };
 
+// Applied before first paint so the saved theme is in place with no flash.
+// Defaults to dark (the app's original look) when nothing is stored.
+const themeInit = `(function(){try{var t=localStorage.getItem('theme');if(t!=='light'&&t!=='dark')t='dark';document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();`;
+
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" data-scroll-behavior="smooth">
+    <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInit }} />
+      </head>
       <body>
         <GlassBackground />
         <div style={{ position: "relative", zIndex: 1 }}>{children}</div>

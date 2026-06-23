@@ -40,8 +40,10 @@ export async function GET() {
   const text = (s, x, yy, { size = 11, f = font, color = ink } = {}) =>
     page.drawText(String(s), { x, y: yy, size, font: f, color });
 
-  // Header
-  text("Kai", margin, y, { size: 20, f: bold, color: accent });
+  // Header — the person's name is the document title (falls back to account name).
+  const displayName =
+    profile?.preferredName || user.name || "Appointment record";
+  text(displayName, margin, y, { size: 20, f: bold, color: accent });
   text("Appointment record", margin, y - 22, { size: 12, f: bold });
   text(
     `Generated on ${new Date().toLocaleDateString("en-GB", {

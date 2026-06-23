@@ -31,7 +31,7 @@
   flex: 1;
   height: 4px;
   border-radius: var(--radius-pill);
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--color-border);
   transition: background var(--transition);
 }
 .dotOn {
@@ -54,7 +54,7 @@
   padding: 12px 14px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--color-inset);
   color: var(--color-fg);
   font-size: 14px;
   font-weight: 500;
@@ -81,7 +81,7 @@
   padding: 14px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--color-inset);
   color: var(--color-fg);
   font-size: 15px;
   font-weight: 500;
@@ -131,6 +131,10 @@
   border-width: 0 2px 2px 0;
   transform: rotate(45deg);
 }
+/* Light mode: the checkbox fill is dark green, so the tick must be white. */
+:global([data-theme="light"]) .radioActive .checkDot::after {
+  border-color: #ffffff;
+}
 
 /* read-only profile summary (edit mode, collapsed) */
 .summary {
@@ -143,7 +147,7 @@
   align-items: baseline;
   gap: 16px;
   padding: 12px 2px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid var(--color-border);
 }
 .sumLabel {
   font-size: 13px;

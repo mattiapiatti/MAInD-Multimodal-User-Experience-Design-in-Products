@@ -6,6 +6,7 @@ import Card from "@/components/ui/Card";
 import Avatar from "@/components/ui/Avatar";
 import OnboardingForm from "@/components/onboarding/OnboardingForm";
 import DangerZone from "@/components/settings/DangerZone";
+import ThemeToggle from "@/components/settings/ThemeToggle";
 import SignOutButton from "@/components/SignOutButton";
 import { PersonIcon } from "@/components/shell/icons";
 import styles from "./settings.module.css";
@@ -46,6 +47,14 @@ export default async function SettingsPage() {
         <div className={styles.signout}>
           <SignOutButton />
         </div>
+      </Card>
+
+      <Card
+        title="Appearance"
+        subtitle="Choose how the app looks."
+        padded
+      >
+        <ThemeToggle />
       </Card>
 
       <Card

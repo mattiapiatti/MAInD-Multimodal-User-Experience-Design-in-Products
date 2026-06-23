@@ -4,7 +4,7 @@
   z-index: 0;
   overflow: hidden;
   pointer-events: none;
-  background: radial-gradient(120% 80% at 50% -8%, #16352a 0%, #0c1714 46%, #070d0b 100%);
+  background: var(--bg-gradient);
 }
 
 .orb {
@@ -16,7 +16,7 @@
   right: -80px;
   width: 340px;
   height: 340px;
-  background: radial-gradient(circle, rgba(95, 200, 145, 0.55), transparent 68%);
+  background: radial-gradient(circle, var(--orb-1), transparent 68%);
   filter: blur(38px);
   animation: drift1 17s ease-in-out infinite;
 }
@@ -25,7 +25,7 @@
   left: -110px;
   width: 320px;
   height: 320px;
-  background: radial-gradient(circle, rgba(70, 140, 170, 0.34), transparent 68%);
+  background: radial-gradient(circle, var(--orb-2), transparent 68%);
   filter: blur(44px);
   animation: drift2 21s ease-in-out infinite;
 }
@@ -34,7 +34,7 @@
   right: -60px;
   width: 240px;
   height: 240px;
-  background: radial-gradient(circle, rgba(120, 210, 160, 0.3), transparent 68%);
+  background: radial-gradient(circle, var(--orb-3), transparent 68%);
   filter: blur(40px);
   animation: drift3 19s ease-in-out infinite;
 }

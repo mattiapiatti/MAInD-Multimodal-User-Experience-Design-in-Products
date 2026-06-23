@@ -46,7 +46,7 @@ export default function DeviceManager({ devices }) {
   }
 
   async function remove(id) {
-    if (!confirm("Unpair this device?")) return;
+    // Unpair immediately — no confirmation prompt; the user can re-pair anytime.
     setBusy("remove");
     try {
       await removeDeviceAction(id);

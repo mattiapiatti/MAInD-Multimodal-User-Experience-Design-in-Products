@@ -47,9 +47,9 @@
 }
 
 .secondary {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--color-inset);
   color: var(--color-fg);
-  border-color: rgba(255, 255, 255, 0.14);
+  border-color: var(--color-border);
   box-shadow: var(--glass-highlight);
 }
 .secondary:active:not(:disabled) {

@@ -3,7 +3,7 @@
   position: relative;
   border-radius: 30px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  border: 1px solid var(--color-border);
   box-shadow:
     0 20px 44px rgba(0, 22, 14, 0.5),
     inset 0 1px 0 rgba(255, 255, 255, 0.28);
@@ -124,7 +124,7 @@
 }
 .statLbl {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--color-fg-muted);
 }
 .statVal {
   display: flex;
@@ -134,17 +134,17 @@
 .statNum {
   font-size: 26px;
   font-weight: 700;
-  color: #fff;
+  color: var(--color-fg);
   letter-spacing: -0.02em;
 }
 .statUnit {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--color-fg-faint);
 }
 .bar {
   height: 5px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--color-border);
   overflow: hidden;
 }
 .barFill {
@@ -184,7 +184,7 @@
 .tText {
   font-size: 14px;
   line-height: 1.45;
-  color: rgba(255, 255, 255, 0.82);
+  color: var(--color-fg-muted);
 }
 
 .footerLink {
@@ -195,4 +195,10 @@
   font-size: 14px;
   font-weight: 700;
   color: var(--color-accent-bright);
+}
+
+/* ============ LIGHT THEME OVERRIDES ============ */
+:global([data-theme="light"]) .stats {
+  background: rgba(255, 255, 255, 0.72);
+  border-top: 1px solid var(--color-border);
 }

@@ -21,8 +21,8 @@ export default async function OnboardingPage() {
         <span className={styles.brandDot} aria-hidden="true" />
         <h1 className={styles.h1}>Hi{user.name ? `, ${user.name}` : ""}</h1>
         <p className={styles.lead}>
-          Let&apos;s set up your companion. Just four steps — you can change
-          everything later in settings.
+          Let&apos;s set up your companion. Just a few quick steps — you can
+          change everything later in settings.
         </p>
       </div>
 

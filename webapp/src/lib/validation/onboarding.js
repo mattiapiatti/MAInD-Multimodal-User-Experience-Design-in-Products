@@ -65,13 +65,11 @@ export const onboardingSchema = z.object({
   hormoneMethod: z
     .array(z.enum(["gel", "injection", "pill", "patch", "other", "nothing"]))
     .min(1, "Select at least one"),
-  stage: z.enum(["starting", "few_months", "further"]),
+  stage: z.enum(["starting", "few_months", "further"]).optional(),
   goals: z.array(z.string()).default([]),
   trackedSymptoms: z.array(z.string()).default([]),
   therapyStartDate: z
     .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date")
-    .optional()
-    .or(z.literal("")),
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Select your therapy start date"),
   language: z.enum(["it", "en"]).default("en"),
 });

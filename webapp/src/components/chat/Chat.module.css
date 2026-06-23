@@ -20,7 +20,7 @@
   background: rgba(18, 30, 25, 0.55);
   backdrop-filter: blur(24px) saturate(160%);
   -webkit-backdrop-filter: blur(24px) saturate(160%);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--color-border);
 }
 .back {
   display: flex;
@@ -90,10 +90,10 @@
   overflow-wrap: anywhere;
 }
 .kai .bubble {
-  background: rgba(255, 255, 255, 0.07);
+  background: var(--color-inset);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--color-border);
   border-radius: 20px 20px 20px 6px;
 }
 .me .bubble {
@@ -155,13 +155,13 @@
   background: rgba(18, 30, 25, 0.6);
   backdrop-filter: blur(28px) saturate(160%);
   -webkit-backdrop-filter: blur(28px) saturate(160%);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid var(--color-border);
 }
 .input {
   flex: 1;
   min-width: 0;
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: var(--color-inset);
+  border: 1px solid var(--color-border);
   border-radius: 22px;
   padding: 11px 16px;
   font-size: 16px;
@@ -186,7 +186,7 @@
   min-height: 44px;
   padding: 9px 16px;
   border-radius: 22px;
-  background: rgba(255, 255, 255, 0.07);
+  background: var(--color-inset);
   border: 1px solid rgba(214, 90, 80, 0.5);
 }
 .recDot {
@@ -220,8 +220,8 @@
   box-shadow: 0 4px 12px rgba(20, 60, 45, 0.4);
 }
 .mic {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: var(--color-inset);
+  border: 1px solid var(--color-border);
 }
 .micOn {
   background: rgba(214, 90, 80, 0.85);
@@ -236,4 +236,22 @@
   50% {
     box-shadow: 0 0 0 8px rgba(214, 90, 80, 0);
   }
+}
+
+/* light theme overrides */
+:global([data-theme="light"]) .header {
+  background: rgba(255, 255, 255, 0.7);
+}
+:global([data-theme="light"]) .inputBar {
+  background: rgba(255, 255, 255, 0.7);
+}
+:global([data-theme="light"]) .kai .bubble {
+  color: var(--color-fg);
+}
+:global([data-theme="light"]) .mic {
+  color: var(--color-fg);
+}
+:global([data-theme="light"]) .kai .voiceBtn {
+  background: var(--color-inset);
+  color: var(--color-fg);
 }
