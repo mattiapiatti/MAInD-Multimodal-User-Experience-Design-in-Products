@@ -20,10 +20,10 @@
   /* App surfaces — frosted glass over the dark backdrop */
   --color-bg: #070c0a;
   /* Backdrop gradient + orb tints (consumed by GlassBackground) */
-  --bg-gradient: radial-gradient(120% 80% at 50% -8%, #16352a 0%, #0c1714 46%, #070d0b 100%);
-  --orb-1: rgba(95, 200, 145, 0.55);
-  --orb-2: rgba(70, 140, 170, 0.34);
-  --orb-3: rgba(120, 210, 160, 0.3);
+  --bg-gradient: radial-gradient(120% 80% at 50% -8%, #122a21 0%, #0c1714 46%, #070d0b 100%);
+  --orb-1: rgba(95, 200, 145, 0.34);
+  --orb-2: rgba(70, 140, 170, 0.22);
+  --orb-3: rgba(120, 210, 160, 0.18);
   --color-surface: rgba(255, 255, 255, 0.055);
   --color-inset: rgba(255, 255, 255, 0.06);
   --color-border: rgba(255, 255, 255, 0.12);
@@ -106,9 +106,9 @@
 
   --color-bg: #eef3f0;
   --bg-gradient: radial-gradient(120% 80% at 50% -8%, #dcefe4 0%, #e9f3ee 46%, #f3f8f5 100%);
-  --orb-1: rgba(95, 200, 145, 0.28);
-  --orb-2: rgba(70, 140, 170, 0.18);
-  --orb-3: rgba(120, 210, 160, 0.16);
+  --orb-1: rgba(95, 200, 145, 0.18);
+  --orb-2: rgba(70, 140, 170, 0.12);
+  --orb-3: rgba(120, 210, 160, 0.1);
 
   --color-surface: rgba(255, 255, 255, 0.72);
   --color-inset: rgba(16, 42, 32, 0.05);
@@ -176,7 +176,7 @@
 
 html,
 body {
-  height: 100%;
+  min-height: 100svh;
 }
 
 body {
@@ -185,7 +185,9 @@ body {
   font-size: 16px;
   line-height: 1.45;
   color: var(--color-fg);
-  background: var(--color-bg);
+  /* Gradient on the page itself (fixed) so the safe-area / overscroll never
+     shows a black band — the GlassBackground orbs layer on top. */
+  background: var(--color-bg) var(--bg-gradient) fixed;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overscroll-behavior-y: none;

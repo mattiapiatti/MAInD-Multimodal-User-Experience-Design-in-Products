@@ -26,7 +26,7 @@ export const viewport = {
   initialScale: 1,
   maximumScale: 1,
   viewportFit: "cover",
-  themeColor: "#070c0a",
+  themeColor: "#0c1714",
 };
 
 // Applied before first paint so the saved theme is in place with no flash.

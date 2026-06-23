@@ -13,11 +13,11 @@
   padding: 22px 22px 20px;
   background: linear-gradient(
     155deg,
-    rgba(99, 190, 142, 0.55),
-    rgba(45, 124, 94, 0.32)
+    rgba(99, 190, 142, 0.34),
+    rgba(45, 124, 94, 0.2)
   );
-  backdrop-filter: blur(22px) saturate(170%);
-  -webkit-backdrop-filter: blur(22px) saturate(170%);
+  backdrop-filter: blur(22px) saturate(140%);
+  -webkit-backdrop-filter: blur(22px) saturate(140%);
   /* greeting + title + status pill sit left of the face tile;
      the Talk pill spans the full width on the second row */
   display: grid;

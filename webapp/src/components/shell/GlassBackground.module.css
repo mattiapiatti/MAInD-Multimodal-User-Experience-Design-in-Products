@@ -1,6 +1,8 @@
 .bg {
   position: fixed;
   inset: 0;
+  /* Cover the small viewport at minimum; stays put over safe areas. */
+  min-height: 100svh;
   z-index: 0;
   overflow: hidden;
   pointer-events: none;

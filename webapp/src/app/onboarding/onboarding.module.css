@@ -1,5 +1,5 @@
 .shell {
-  min-height: 100dvh;
+  min-height: 100svh;
   width: 100%;
   max-width: var(--content-max);
   margin: 0 auto;
