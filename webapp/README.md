@@ -1,59 +1,67 @@
 # Kai — mobile web app
 
-Mobile-only web app on top of Kai, the local voice health assistant. Handles
-**accounts, first-login onboarding, exclusive device pairing, insights (charts +
-PDF), and data/privacy controls**. Self-hosted next to the voice backend; data
-stays on your machine.
+Mobile-only web app for Kai, the voice health companion — the **redesigned
+"liquid glass" UI** (dark by default, with a light-mode toggle). Handles
+**accounts, first-login onboarding, exclusive device pairing, a "Talk to Kai"
+text + voice chat, insights (charts + PDF), and data/privacy controls**.
 
-Stack runs fully local: **Next.js 16 (App
-Router, JS, CSS Modules), Better Auth, Drizzle ORM on local SQLite**
-(`better-sqlite3`). No Cloudflare, no cloud.
+Stack: **Next.js 16 (App Router, JS, CSS Modules), Better Auth, Drizzle ORM**,
+deployed to **Cloudflare Workers via OpenNext**. All backend state (accounts,
+sessions, onboarding, devices, pairing) lives in a single **Durable Object with
+SQLite storage** — not D1, not a local file. Migrations are bundled and applied
+inside the Durable Object on boot.
 
-## Run locally (without Docker)
+## Run locally (dev)
 
 ```bash
 cd webapp
-cp .env.example .env          # adjust BETTER_AUTH_SECRET / URL
 npm install
-npm run db:generate           # create SQL migrations from the schema (first time)
-npm run db:migrate            # apply them → data/app.db
-npm run dev                   # http://localhost:3000
+cp .env.example .dev.vars      # set BETTER_AUTH_SECRET (a 32+ char random string)
+npm run db:generate            # regenerate SQL migrations after a schema change
+npm run dev                    # http://localhost:3000  (wrangler dev + OpenNext)
 ```
 
-## Run with Docker (alongside the voice backend)
+`npm run dev` runs the Worker locally with the Durable Object — there is no
+separate migrate step and no local `.db` file, the DO applies the bundled
+migrations itself.
 
-From the project root:
+## Build & deploy (Cloudflare)
 
 ```bash
-docker compose up --build webapp
+npm run cf:build      # OpenNext build for Workers
+npm run cf:preview    # run the built Worker locally
+npm run cf:deploy     # wrangler deploy
 ```
 
-Open it on a **phone on the same Wi-Fi** at `http://<host-ip>:3000`. Set the
-public origin so Better Auth cookies/redirects work:
-
-```bash
-WEBAPP_PUBLIC_URL=http://192.168.1.20:3000 \
-WEBAPP_AUTH_SECRET=$(openssl rand -base64 32) \
-docker compose up --build webapp
-```
+Config lives in `wrangler.jsonc` (the `AUTH_DO` Durable Object binding,
+`BETTER_AUTH_URL`, static assets). Set the `BETTER_AUTH_SECRET` secret with
+`wrangler secret put` for the deployed Worker, or in `.dev.vars` for local dev.
 
 ## How it fits together
 
 - **Auth** — email/password via Better Auth. Email verification is **off** in
-  this prototype (no local mail service); tighten when email is wired.
+  this prototype (no mail service); tighten when email is wired.
+- **Demo login** — a one-tap `POST /api/dev-login` signs straight into the demo
+  account without a password, for showcasing the app. Gated to local/LAN (or
+  `DEMO_LOGIN=1`); it 404s on the deployed site.
+- **Theme** — dark by default (the "liquid glass" look) with a light-mode toggle
+  in Settings (`ThemeToggle`), persisted per browser.
 - **Onboarding gate** — new users land on `/onboarding` until they finish; the
-  health profile is editable later in Settings. Cookie session cache is disabled
-  so completing onboarding takes effect immediately.
-- **Device pairing** — the app generates a 6-char code. The Arduino Uno Q claims
-  it via `POST /api/pair { code, hardwareId }` and receives a `deviceToken` to
-  present on the voice backend's WebSocket `hello` handshake. A `UNIQUE`
-  constraint on `hardwareId` guarantees a unit belongs to **one account only**.
-  A "Simula associazione" button demos the flow without hardware.
+  health profile is editable later in Settings. The session cookie cache is
+  disabled so completing onboarding takes effect immediately.
+- **Talk to Kai** — `/chat` opens a text + voice chat with Kai; voice notes are
+  transcribed live (speech-to-text) as you record.
+- **Device pairing** — the **device** starts pairing (`POST /api/device/pair/start`)
+  and shows a 6-char code; the signed-in user types that code in the app to claim
+  it, then the device polls (`POST /api/device/pair/poll`) — presenting the secret
+  it kept — to receive its `deviceToken` (handed over once). A `UNIQUE` constraint
+  on `hardwareId` guarantees a unit belongs to **one account only**. A one-tap
+  "Pair Kai" button demos the flow without hardware.
 - **Insights** — charts (recharts) and a downloadable PDF report
   (`/api/report`, pdf-lib). Data is currently **mock** (`src/lib/mock/health.js`)
   with the same shape the structured memory will return later.
-- **Data & privacy** — wipe Kai's memory (best-effort call to the
-  voice backend's HTTP API) or delete the account (cascades to profile, devices,
+- **Data & privacy** — wipe Kai's memory (best-effort call to the voice
+  backend's HTTP API) or delete the account (cascades to profile, devices,
   sessions).
 
 ## Layout
@@ -61,13 +69,17 @@ docker compose up --build webapp
 ```
 src/
   app/
-    (auth)/         login, register
-    (app)/          home, insights, device, settings  (gated: logged-in + onboarded)
-    onboarding/     first-login wizard
-    api/auth/       Better Auth handler
-    api/pair/       device claim endpoint
-    api/report/     PDF generation
-  components/       ui/, shell/ (tab bar), onboarding/, device/, settings/, insights/
-  db/               schema.js, index.js (SQLite), migrate.mjs, migrations/
-  lib/              auth/, data/, validation/, mock/, voicebot.js, ids.js, env.js
+    (auth)/           login, register
+    (app)/            home, insights, device, settings  (gated: logged-in + onboarded)
+    chat/             Talk to Kai — text + voice chat
+    onboarding/       first-login wizard
+    api/auth/         Better Auth handler
+    api/dev-login/    demo one-tap sign-in (local/LAN only)
+    api/device/pair/  device pairing: start + poll
+    api/report/       PDF generation
+  backend/
+    do.js             the Durable Object — SQLite + Better Auth + pairing (the whole backend)
+  components/         ui/, shell/ (tab bar), onboarding/, device/, settings/ (+ ThemeToggle), insights/, chat/
+  db/                 schema.js   (Drizzle schema; SQL migrations live in ../drizzle/)
+  lib/                voicebot.js, ids.js, env.js, demo.js, mock/
 ```

@@ -6,6 +6,11 @@ and preparing for appointments.
 
 Course: *Multimodal User Experience Design in Products* — SUPSI MAInD.
 
+> **This branch (`Giorgio`) focuses on the mobile web app** — the redesigned
+> **Kai** UI (liquid-glass dark theme, "Talk to Kai" chat, insights, onboarding,
+> device pairing). See [`webapp/README.md`](webapp/README.md). The rest of this
+> README covers the voice client that owns the persona and memory.
+
 This repository is **Kai's identity and memory**. It owns:
 
 - the **persona** — [`persona/system_prompt.txt`](persona/system_prompt.txt)
@@ -132,9 +137,9 @@ Reports hot flashes at night, three cycles in a row.
 Related: [[menopause-hrt]] [[sleep]]
 ```
 
-> The vault holds personal health data and is **git-ignored** — only an empty
-> `memory/vault/.gitkeep` is tracked. `/reset` clears the conversation, never the
-> vault; the vault survives restarts.
+> The vault holds personal health data and is **git-ignored** — it's created at
+> runtime and nothing under `memory/` is committed. `/reset` clears the
+> conversation, never the vault; the vault survives restarts.
 
 ## Configuration
 
