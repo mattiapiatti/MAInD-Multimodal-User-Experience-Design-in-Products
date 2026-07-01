@@ -1,6 +1,6 @@
-# esp32_eyes — companion face on the Waveshare ESP32-S3-Touch-LCD-2.8C
+# esp32_eyes — Kai's face on the Waveshare ESP32-S3-Touch-LCD-2.8C
 
-The "face" half of the health companion. Renders the **13 Maind X states**
+The "face" half of **Kai**. Renders the **13 Maind X states**
 (github.com/g10rg10/state-hormones) as an animated **face** — round white eyes +
 a white smile / talking mouth on a dark orb — on a Waveshare
 **ESP32-S3-Touch-LCD-2.8C** (**2.8″ ROUND, 480×480**, **ST7701** RGB + **TCA9554**

@@ -1,6 +1,6 @@
-# Health Companion — client
+# Kai — client
 
-A voice-only hormonal-health companion: a quiet voice in a small home device for
+**Kai** is a voice-only hormonal-health companion: a quiet voice in a small home device for
 tracking symptoms over time, understanding what the body is doing, and preparing
 for appointments.
 
@@ -13,7 +13,7 @@ Course: *Multimodal User Experience Design in Products* — SUPSI MAInD.
 > to the server. To run fully-local instead, set `VA_BASE_URL=http://127.0.0.1:8080`
 > and leave the access token empty (see [Configuration](#configuration)).
 
-This repository is the **companion's identity and memory**. It owns:
+This repository is **Kai's identity and memory**. It owns:
 
 - the **persona** — [`persona/system_prompt.txt`](persona/system_prompt.txt)
 - the **learned memory** — an Obsidian-style note vault in [`memory/vault/`](memory/vault/)
@@ -22,14 +22,14 @@ This repository is the **companion's identity and memory**. It owns:
 It runs **no AI model itself**. All speech-to-text, language generation, text-to-
 speech, and memory computation happen in a separate, reusable **Voice Agent
 Service**. This project connects to that service, hands it the persona and memory,
-and stores back whatever the companion learns. Personal health data never leaves
+and stores back whatever Kai learns. Personal health data never leaves
 this project.
 
 ## Architecture
 
 ```
 ┌───────────────────────────┐   persona + memory bundle    ┌──────────────────────────┐
-│  Health Companion (this)  │ ───── POST /v1/sessions ────▶ │   Voice Agent Service    │
+│  Kai (this)               │ ───── POST /v1/sessions ────▶ │   Voice Agent Service    │
 │  • persona (system prompt)│ ◀──── SSE memory updates ──── │   STT · LLM · TTS ·      │
 │  • memory vault  (owner)  │                               │   adaptive memory engine │
 └───────────────────────────┘                               └──────────────────────────┘
@@ -123,7 +123,7 @@ the token empty.)
 
 ## Memory — adaptive Hebbian vault (owned here)
 
-The companion keeps a persistent long-term memory as an **Obsidian-style vault** of
+Kai keeps a persistent long-term memory as an **Obsidian-style vault** of
 linked markdown notes (`memory/vault/*.md`) — one note per concept (a symptom, the
 therapy, a preference, a pattern), with weighted **Hebbian** links that strengthen
 when memories are used together and fade when they are not.

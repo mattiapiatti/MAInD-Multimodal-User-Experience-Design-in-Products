@@ -1,6 +1,6 @@
-# Health-companion device (Arduino Uno Q)
+# Kai — device (Arduino Uno Q)
 
-The physical voice device: an **Arduino App Lab** app for the Uno Q. The wake word
+Kai's physical voice device: an **Arduino App Lab** app for the Uno Q. The wake word
 runs offline on the Linux core (sherpa-onnx keyword spotting), and the conversation
 is streamed to the project's own **Voice Agent Service** (the same brain the
 `companion` client uses). Persona + memory live server-side; the device only moves audio.
