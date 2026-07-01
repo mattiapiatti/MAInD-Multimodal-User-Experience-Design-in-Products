@@ -150,9 +150,9 @@ Reports hot flashes at night, three cycles in a row.
 Related: [[menopause-hrt]] [[sleep]]
 ```
 
-> The vault holds personal health data and is **git-ignored** — only an empty
-> `memory/vault/.gitkeep` is tracked. `/reset` clears the conversation, never the
-> vault; the vault survives restarts.
+> The vault holds personal health data and is **git-ignored** — it's created at
+> runtime and nothing under `memory/` is committed. `/reset` clears the
+> conversation, never the vault; the vault survives restarts.
 
 ## Configuration
 
