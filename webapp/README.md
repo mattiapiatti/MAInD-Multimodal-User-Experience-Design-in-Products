@@ -1,6 +1,6 @@
-# Mobile web companion
+# Kai — mobile web app
 
-Mobile-only web app on top of the local voice health assistant. Handles
+Mobile-only web app on top of Kai, the local voice health assistant. Handles
 **accounts, first-login onboarding, exclusive device pairing, insights (charts +
 PDF), and data/privacy controls**. Self-hosted next to the voice backend; data
 stays on your machine.
@@ -52,7 +52,7 @@ docker compose up --build webapp
 - **Insights** — charts (recharts) and a downloadable PDF report
   (`/api/report`, pdf-lib). Data is currently **mock** (`src/lib/mock/health.js`)
   with the same shape the structured memory will return later.
-- **Data & privacy** — wipe the assistant's memory (best-effort call to the
+- **Data & privacy** — wipe Kai's memory (best-effort call to the
   voice backend's HTTP API) or delete the account (cascades to profile, devices,
   sessions).
 

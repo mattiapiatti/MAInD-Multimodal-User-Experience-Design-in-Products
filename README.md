@@ -1,12 +1,12 @@
-# Health Companion — client
+# Kai — client
 
-A **fully-local, voice-only** hormonal-health companion: a quiet voice in a small
+**Kai** is a **fully-local, voice-only** hormonal-health companion: a quiet voice in a small
 home device for tracking symptoms over time, understanding what the body is doing,
 and preparing for appointments.
 
 Course: *Multimodal User Experience Design in Products* — SUPSI MAInD.
 
-This repository is the **companion's identity and memory**. It owns:
+This repository is **Kai's identity and memory**. It owns:
 
 - the **persona** — [`persona/system_prompt.txt`](persona/system_prompt.txt)
 - the **learned memory** — an Obsidian-style note vault in [`memory/vault/`](memory/vault/)
@@ -15,14 +15,14 @@ This repository is the **companion's identity and memory**. It owns:
 It runs **no AI model itself**. All speech-to-text, language generation, text-to-
 speech, and memory computation happen in a separate, reusable **Voice Agent
 Service**. This project connects to that service, hands it the persona and memory,
-and stores back whatever the companion learns. Personal health data never leaves
+and stores back whatever Kai learns. Personal health data never leaves
 this project.
 
 ## Architecture
 
 ```
 ┌───────────────────────────┐   persona + memory bundle    ┌──────────────────────────┐
-│  Health Companion (this)  │ ───── POST /v1/sessions ────▶ │   Voice Agent Service    │
+│  Kai (this)               │ ───── POST /v1/sessions ────▶ │   Voice Agent Service    │
 │  • persona (system prompt)│ ◀──── SSE memory updates ──── │   STT · LLM · TTS ·      │
 │  • memory vault  (owner)  │                               │   adaptive memory engine │
 └───────────────────────────┘                               └──────────────────────────┘
@@ -43,6 +43,24 @@ this project.
 > Why the split: the engine became reusable across projects, while the personal
 > health data and the personality stay here. See the service's `docs/API.md` for
 > the wire contract.
+
+## Branches
+
+This is a three-part project, one facet per branch. `main` (here) is the
+persona + memory core described above; the other two branches carry the
+frontends and are documented in their own READMEs:
+
+- **[`Giorgio`](https://github.com/mattiapiatti/MAInD-Multimodal-User-Experience-Design-in-Products/tree/Giorgio) — the mobile web companion (redesigned UI).**
+  Reworks `webapp/` with a "liquid glass" dark redesign, dark/light themes, the
+  Kai avatar with text + voice chat, insights (charts + PDF export), multi-select
+  onboarding, and one-tap device pairing.
+  → [`webapp/README.md` on `Giorgio`](https://github.com/mattiapiatti/MAInD-Multimodal-User-Experience-Design-in-Products/blob/Giorgio/webapp/README.md)
+
+- **[`v2`](https://github.com/mattiapiatti/MAInD-Multimodal-User-Experience-Design-in-Products/tree/v2) — the physical device frontends.**
+  Adds `arduino/`: the ESP32-S3 round-display animated "eyes", the wake-word
+  pipeline with the NeoPixel halo sketch, and wiring the companion to a remotely
+  deployed Voice Agent Service via Cloudflare Access.
+  → [`arduino/README.md`](https://github.com/mattiapiatti/MAInD-Multimodal-User-Experience-Design-in-Products/blob/v2/arduino/README.md) · [`arduino/esp32_eyes/README.md`](https://github.com/mattiapiatti/MAInD-Multimodal-User-Experience-Design-in-Products/blob/v2/arduino/esp32_eyes/README.md) on `v2`
 
 ## Prerequisites
 
@@ -109,7 +127,7 @@ on the same host so the voice WebSocket stays local.
 
 ## Memory — adaptive Hebbian vault (owned here)
 
-The companion keeps a persistent long-term memory as an **Obsidian-style vault** of
+Kai keeps a persistent long-term memory as an **Obsidian-style vault** of
 linked markdown notes (`memory/vault/*.md`) — one note per concept (a symptom, the
 therapy, a preference, a pattern), with weighted **Hebbian** links that strengthen
 when memories are used together and fade when they are not.
