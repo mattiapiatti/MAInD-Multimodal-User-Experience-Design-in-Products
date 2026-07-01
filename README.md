@@ -169,4 +169,6 @@ defaults assume the service is on `localhost`.
 
 ## License
 
-© 2026 Mattia Piatti. Released under **CC BY-NC-SA 4.0**.
+2026 (c) Mattia Piatti. All rights reserved. License: CC BY-NC-SA 4.0
+
+See [LICENSE.md](./LICENSE.md) for the full license text.
