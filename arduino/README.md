@@ -21,6 +21,7 @@ arduino/
   python/
     main.py                      wake loop + lifecycle (Linux/MPU side)
     sherpa_wake.py               offline sherpa-onnx keyword spotter ("hey kay")
+    ei_wake.py                   optional Edge Impulse .eim wake model (WAKE_ENGINE=ei)
     mcu.py                       MCU RPC (ring LED, RGB LEDs, audio level)
     requirements.txt
   bricks/voice_realtime/
@@ -70,6 +71,10 @@ first run.
 
 If it triggers too easily or not enough, tune `KWS_THRESHOLD` (lower = easier) and
 `KWS_SCORE` (higher = easier), or add alternative phrasings via `WAKE_WORD_ALIASES`.
+
+**Alternative engine.** Set `WAKE_ENGINE=ei` to use a custom **Edge Impulse** `.eim`
+keyword model (run by `ei_wake.py`; needs `edge_impulse_linux`) instead of sherpa-onnx.
+The default is `sherpa`.
 
 ## Start automatically on boot
 

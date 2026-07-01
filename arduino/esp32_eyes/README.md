@@ -38,7 +38,7 @@ with Adafruit `fontconvert` from the macOS TTF) for the rounded numerals.
 | 11 | E2_quirk | look-around + double blink |
 | 12 | E4_wink | asymmetric wink |
 
-Indices match `arduino/sketch.ino`'s `S_*` enum and the Linux core's
+Indices match `arduino/sketch/sketch.ino`'s `S_*` enum and the Linux core's
 `mcu.set_light_state(int)`.
 
 ## Build & flash (arduino-cli)
