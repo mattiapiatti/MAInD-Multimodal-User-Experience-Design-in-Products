@@ -43,6 +43,14 @@ needs a **live session URL**: on the memory-owner machine run `companion open` a
 paste the printed `ws(s)://…/voice` into `VA_VOICE_WS_URL`, plus the Cloudflare
 Access token. See [.env.example](.env.example) for every option.
 
+**Device token.** Each board also needs its own `VA_DEVICE_TOKEN`, issued by the
+server owner (`voice-agent-devices issue "<board name>"`). It binds to the board on
+first use — the same token on another board is refused — so never copy a token
+between boards. At boot the log shows `Device token OK: <name>` or the reason it was
+refused. The binding uses the board's hardware id, or a random id kept in
+`arduino/.device-id` (git-ignored): don't delete that file, or the board looks new
+and the owner has to `unbind` its token.
+
 ## Deploy & run
 
 Import this folder in App Lab, or on the board:

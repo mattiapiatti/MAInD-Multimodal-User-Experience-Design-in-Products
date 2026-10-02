@@ -150,6 +150,9 @@ class VoiceSession:
             # Bound the handshake: a server that accepts the upgrade but never sends
             # 'ready' must not wedge the whole loop.
             ready = json.loads(await asyncio.wait_for(ws.recv(), timeout=10))
+            if ready.get("event") == "error":
+                # Refused by the server (e.g. device token bound to another board).
+                raise RuntimeError(ready.get("message", "refused by the server"))
             if ready.get("event") == "ready":
                 self._out_sr = ready.get("output_sample_rate", self._out_sr)
             logger.info(f"Voice Agent Service connected (reply {self._out_sr} Hz)")

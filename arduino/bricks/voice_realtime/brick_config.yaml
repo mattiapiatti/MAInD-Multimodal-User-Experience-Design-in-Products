@@ -15,6 +15,9 @@ config_variables:
   - name: VA_CF_ACCESS_CLIENT_SECRET
     description: Cloudflare Access service-token client secret (same value as the companion .env)
     required: false
+  - name: VA_DEVICE_TOKEN
+    description: This board's own device token (issued by the server owner; binds to this board on first use)
+    required: false
   - name: PIPELINE_SLEEP_TIMEOUT
     description: Idle seconds before returning to wake-word standby
     required: false

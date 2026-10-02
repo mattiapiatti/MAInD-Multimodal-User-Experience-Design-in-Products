@@ -9,9 +9,15 @@ until the user goes quiet), then call ``on_sleep`` to return to wake-word standb
 """
 
 import asyncio
+import hashlib
+import json
 import os
+import secrets
 import threading
+import urllib.error
+import urllib.request
 from typing import Callable
+from urllib.parse import urlparse
 
 from arduino.app_utils import brick, Logger
 
@@ -44,6 +50,86 @@ def _cf_access_headers() -> dict:
     return headers
 
 
+# Hardware identities tried in order for the device fingerprint. The first readable,
+# non-empty one wins; if none is (common inside a container), a random id is
+# generated once and kept in the app folder.
+_HW_ID_SOURCES = (
+    "/sys/firmware/devicetree/base/serial-number",
+    "/proc/device-tree/serial-number",
+    "/etc/machine-id",
+    "/var/lib/dbus/machine-id",
+)
+_APP_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_DEVICE_ID_FILE = os.path.join(_APP_ROOT, ".device-id")
+
+
+def _device_fingerprint() -> tuple[str, str]:
+    """(sha256 of this board's identity, where it came from).
+
+    The server binds a device token to this value on first use, so it must stay
+    the same across restarts — and must never be put in .env (copying .env to
+    another board would then copy the identity too)."""
+    for path in _HW_ID_SOURCES:
+        try:
+            with open(path, "rb") as f:
+                raw = f.read().strip(b"\x00\n\r\t ")
+        except OSError:
+            continue
+        if raw:
+            return hashlib.sha256(raw).hexdigest(), path
+    try:
+        with open(_DEVICE_ID_FILE) as f:
+            raw = f.read().strip()
+    except OSError:
+        raw = ""
+    if not raw:
+        raw = secrets.token_hex(32)
+        with open(_DEVICE_ID_FILE, "w") as f:
+            f.write(raw + "\n")
+    return hashlib.sha256(raw.encode()).hexdigest(), _DEVICE_ID_FILE
+
+
+def _device_headers() -> dict:
+    """Per-device token headers (empty if VA_DEVICE_TOKEN is not set)."""
+    token = os.getenv("VA_DEVICE_TOKEN", "").strip()
+    if not token:
+        return {}
+    fingerprint, _ = _device_fingerprint()
+    return {"X-Device-Token": token, "X-Device-Fingerprint": fingerprint}
+
+
+def _check_device_token() -> None:
+    """At boot, ask the server whether this board's token is valid and bound here,
+    so a wrong/copied token shows up in the logs immediately, not at the first wake."""
+    headers = _device_headers()
+    if not headers:
+        logger.info("No VA_DEVICE_TOKEN set — connecting without a device token.")
+        return
+    _, source = _device_fingerprint()
+    logger.info(f"Device fingerprint from {source}")
+    ws_url = (os.getenv("VA_VOICE_WS_URL", "") or os.getenv("VOICE_WS_URL", "")).strip()
+    if not ws_url:
+        return
+    parts = urlparse(ws_url)
+    scheme = "https" if parts.scheme == "wss" else "http"
+    req = urllib.request.Request(
+        f"{scheme}://{parts.netloc}/v1/devices/me",
+        headers={**_cf_access_headers(), **headers},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as r:
+            info = json.loads(r.read())
+        logger.info(f"Device token OK: {info.get('name')} ({info.get('device_id')})")
+    except urllib.error.HTTPError as e:
+        try:
+            detail = json.loads(e.read()).get("detail", "")
+        except Exception:  # noqa: BLE001
+            detail = ""
+        logger.error(f"Device token refused (HTTP {e.code}): {detail}")
+    except Exception as e:  # noqa: BLE001 — offline at boot must not stop the device
+        logger.warning(f"Device token check skipped: {e}")
+
+
 @brick
 class VoiceRealtime:
     """Runs the wake ↔ conversation loop in a dedicated daemon thread."""
@@ -54,6 +140,7 @@ class VoiceRealtime:
         self._wake_event: threading.Event | None = None
         self._on_sleep: Callable | None = None
         self._idle_timeout = float(os.getenv("PIPELINE_SLEEP_TIMEOUT", "45"))
+        threading.Thread(target=_check_device_token, name="device-check", daemon=True).start()
 
     def set_wake_mode(self, event: threading.Event, on_sleep: Callable = None, sleep_timeout_sec: float = None):
         self._wake_event = event
@@ -122,7 +209,7 @@ class VoiceRealtime:
         logger.info(f"Voice Agent Service: {url}")
         return VoiceSession(
             url=url,
-            headers=_cf_access_headers(),
+            headers={**_cf_access_headers(), **_device_headers()},
             output_rate=int(os.getenv("VA_OUTPUT_RATE", "24000")),
             idle_timeout=self._idle_timeout,
             silence_ms=int(os.getenv("SILENCE_MS", "1500")),
