@@ -1,0 +1,35 @@
+# Headless companion on the home server, next to the Voice Agent Service stack
+# (voice-agent-service/deploy/cloudflare). It reaches the service over that stack's
+# Docker network — no Cloudflare in between, so no Access token — and keeps the
+# fixed session the devices are configured with open across service restarts.
+#
+#   docker compose -f docker-compose.server.yml up -d --build
+#
+# .env (never commit it) holds:
+#   COMPANION_SESSION_ID=s_<random>   the id in the devices' VA_VOICE_WS_URL
+#   COMPANION_OWNER_TOKEN=<secret>    the service's VA_OWNER_TOKEN
+name: kai-companion
+services:
+  companion:
+    build:
+      context: .
+    image: health-companion-client:latest
+    container_name: kai-companion
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      VA_BASE_URL: "http://voice-agent:8080"
+      COMPANION_PROFILE_TYPES: "therapy,preference"
+    volumes:
+      # The learned memory is the source of truth and lives on this host.
+      - ./memory/vault:/app/memory/vault
+      - ./memory/knowledge:/app/memory/knowledge:ro
+      - ./persona:/app/persona:ro
+    networks: [voice-agent]
+    restart: unless-stopped
+
+networks:
+  voice-agent:
+    name: voice-agent-cloudflare_default
+    external: true

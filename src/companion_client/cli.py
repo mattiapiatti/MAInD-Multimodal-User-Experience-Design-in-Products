@@ -19,6 +19,7 @@ import signal
 import subprocess
 import sys
 import threading
+import time
 
 import httpx
 
@@ -68,10 +69,40 @@ def cmd_run(args: argparse.Namespace) -> int:
     return 0
 
 
+def _supervise_stable_session(conn: Connector) -> None:
+    """Keep the fixed-id session alive forever: when the memory stream ends, either
+    resubscribe (proxy dropped it) or reopen with the same id (service restarted)."""
+    opened = False
+    while True:
+        try:
+            if not opened or not conn.session_alive():
+                info = conn.open(warmup=True)
+                print(f"session {conn.session_id} — model {'warm' if info.get('warm') else 'warming'}")
+                print(f"  voice URL: {conn.voice_ws_url}", flush=True)
+                opened = True
+            else:
+                conn.persist_snapshot()  # catch up on anything learned during the gap
+            conn.sync_memory()  # blocks until the stream ends
+        except httpx.HTTPError as e:
+            log.warning("service unreachable (%s) — retrying", e)
+        time.sleep(5)
+
+
 def cmd_open(args: argparse.Namespace) -> int:
     # Translate SIGTERM (e.g. `docker stop`) into the same clean shutdown as Ctrl-C.
     signal.signal(signal.SIGTERM, lambda *_: (_ for _ in ()).throw(KeyboardInterrupt()))
     conn = Connector()
+    if settings.session_id:
+        # Stable session: the device's URL never changes. On exit, save the memory
+        # but leave the session open — the device keeps working until we're back.
+        try:
+            _supervise_stable_session(conn)
+        except KeyboardInterrupt:
+            try:
+                conn.persist_snapshot()
+            except httpx.HTTPError as e:
+                log.warning("final memory save failed: %s", e)
+        return 0
     info = conn.open(warmup=True)
     _, stop = _start_memory_sync(conn)
     print(f"session {conn.session_id} — model {'warm' if info.get('warm') else 'warming'}")

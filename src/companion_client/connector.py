@@ -81,10 +81,14 @@ class Connector:
             "memory_config": {"profile_types": profile_types},
             "warmup": warmup,
         }
+        headers = dict(self._headers)
+        if self._cfg.session_id:
+            body["session_id"] = self._cfg.session_id
+            headers["X-Owner-Token"] = self._cfg.owner_token
         r = httpx.post(
             f"{self._base}/v1/sessions",
             json=body,
-            headers=self._headers,
+            headers=headers,
             timeout=self._cfg.request_timeout,
         )
         r.raise_for_status()
@@ -118,6 +122,35 @@ class Connector:
             log.warning("close failed: %s", e)
         finally:
             self.session_id = None
+
+    def session_alive(self) -> bool:
+        """True if the service still has this session (False after a service restart).
+        Raises httpx.HTTPError when the service itself is unreachable."""
+        if not self.session_id:
+            return False
+        r = httpx.get(
+            f"{self._base}/v1/sessions/{self.session_id}/memory",
+            headers=self._headers,
+            timeout=self._cfg.request_timeout,
+        )
+        if r.status_code == 404:
+            return False
+        r.raise_for_status()
+        return True
+
+    def persist_snapshot(self) -> None:
+        """Write the service's current vault to disk (catch-up after a stream gap)."""
+        if not self.session_id:
+            return
+        r = httpx.get(
+            f"{self._base}/v1/sessions/{self.session_id}/memory",
+            headers=self._headers,
+            timeout=self._cfg.request_timeout,
+        )
+        r.raise_for_status()
+        snap = r.json()
+        self._persist(snap.get("vault", []), [])
+        log.info("memory snapshot persisted (revision %s)", snap.get("revision"))
 
     def wipe(self) -> None:
         """Erase the personal memory on the service (and locally via the next stream)."""

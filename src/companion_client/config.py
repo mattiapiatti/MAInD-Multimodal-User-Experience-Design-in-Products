@@ -65,6 +65,14 @@ class Settings(BaseSettings):
     # Note types always surfaced for context every turn (this companion's vocabulary).
     profile_types: str = Field("therapy,preference", alias="COMPANION_PROFILE_TYPES")
 
+    # ---- stable session ----
+    # Fixed session id (s_ + 4-64 of [A-Za-z0-9_-]). With it, `companion open` reopens
+    # the same session after a service restart, so the device keeps its voice URL.
+    # Empty = a new random session each time (and it is closed on exit).
+    session_id: str = Field("", alias="COMPANION_SESSION_ID")
+    # The service's VA_OWNER_TOKEN: required to open a session with a chosen id.
+    owner_token: str = Field("", alias="COMPANION_OWNER_TOKEN")
+
     # ---- misc ----
     request_timeout: float = Field(30.0, alias="COMPANION_REQUEST_TIMEOUT")
     log_level: str = Field("INFO", alias="COMPANION_LOG_LEVEL")
