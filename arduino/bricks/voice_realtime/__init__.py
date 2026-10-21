@@ -112,9 +112,11 @@ def _check_device_token() -> None:
         return
     parts = urlparse(ws_url)
     scheme = "https" if parts.scheme == "wss" else "http"
+    # Cloudflare's Browser Integrity Check rejects urllib's default User-Agent
+    # ("Python-urllib/3.x") with a 403 (error 1010) before Access even runs.
     req = urllib.request.Request(
         f"{scheme}://{parts.netloc}/v1/devices/me",
-        headers={**_cf_access_headers(), **headers},
+        headers={**_cf_access_headers(), **headers, "User-Agent": "kai-device/1.0"},
     )
     try:
         with urllib.request.urlopen(req, timeout=10) as r:

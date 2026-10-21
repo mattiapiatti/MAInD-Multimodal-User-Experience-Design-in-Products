@@ -16,9 +16,11 @@ import asyncio
 import json
 import math
 import os
+import socket
 import struct
 import subprocess
 from collections import deque
+from urllib.parse import urlparse
 
 import numpy as np
 
@@ -45,6 +47,35 @@ S_QUIRK, S_WINK = 11, 12
 BEEP_SR = 24000
 BEEP_START_HZ = 988  # higher tone = "recording started, speak now"
 BEEP_STOP_HZ = 587   # lower tone  = "recording stopped, thinking"
+
+# Cap on the TCP segment size of the voice connection (0 = OS default). Some
+# networks (e.g. the SUPSI lab Wi-Fi) have a path MTU below 1500 and drop the
+# "fragmentation needed" ICMP, so the handshake works but the utterance upload
+# (full-size segments) silently never arrives. 1200 fits any sane path.
+TCP_MSS = int(os.getenv("VA_TCP_MSS", "1200"))
+
+
+def _open_socket(url: str, mss: int) -> socket.socket:
+    """Connected, non-blocking TCP socket to the URL's host, with MSS capped
+    before connect() so the SYN advertises it to the server too."""
+    parts = urlparse(url)
+    port = parts.port or (443 if parts.scheme == "wss" else 80)
+    err: OSError | None = None
+    for family, type_, proto, _, addr in socket.getaddrinfo(parts.hostname, port, type=socket.SOCK_STREAM):
+        sock = socket.socket(family, type_, proto)
+        try:
+            try:
+                sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_MAXSEG, mss)
+            except OSError as e:  # e.g. macOS refuses it before connect — keep the default
+                logger.warning(f"could not cap TCP MSS at {mss}: {e}")
+            sock.settimeout(10)
+            sock.connect(addr)
+            sock.setblocking(False)
+            return sock
+        except OSError as e:
+            err = e
+            sock.close()
+    raise err or OSError(f"no address for {parts.hostname}")
 
 
 class VoiceSession:
@@ -141,9 +172,14 @@ class VoiceSession:
 
         ws = None
         try:
+            extra = {}
+            if TCP_MSS:
+                extra["sock"] = await asyncio.wait_for(
+                    asyncio.to_thread(_open_socket, self._url, TCP_MSS), timeout=10
+                )
             # ping_interval=None: a turn can keep the brain busy past the keepalive.
             ws = await asyncio.wait_for(
-                connect(self._url, max_size=None, ping_interval=None, additional_headers=self._headers),
+                connect(self._url, max_size=None, ping_interval=None, additional_headers=self._headers, **extra),
                 timeout=10,
             )
             await ws.send(json.dumps({"event": "hello", "input_sample_rate": self._cr}))
